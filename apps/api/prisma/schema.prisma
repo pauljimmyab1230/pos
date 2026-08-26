@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== NEGOCIO ====================
+model Business {
+  id              String          @id @default(uuid())
+  ruc             String          @unique
+  razonSocial     String
+  nombreComercial String?
+  direccion       String
+  telefono        String?
+  email           String?
+  igv             Float           @default(18)
+  giroComercial   String?
+  logo            String?
+  regimenRUS      Boolean         @default(false)
+  mensajePdf      String?
+  ticketera       String          @default("58mm")
+  disenoTicket    String          @default("A")
+  disenoPdf       String          @default("A")
+  conexionImpresora String        @default("USB")
+  series          Series[]
+  bankAccounts    BankAccount[]
+  users           User[]
+  products        Product[]
+  clients         Client[]
+  sales           Sale[]
+  quotes          Quote[]
+  guides          Guide[]
+  cashboxMovements CashboxMovement[]
+  expenses        Expense[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+// ==================== USUARIOS ====================
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  nombre     String
+  rol        String   @default("Vendedor")
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sales      Sale[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+// ==================== SERIES ====================
+model Series {
+  id          String    @id @default(uuid())
+  tipo        String
+  prefijo     String
+  numeroActual Int      @default(0)
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([tipo, businessId])
+  @@index([businessId])
+}
+
+// ==================== CLIENTES ====================
+model Client {
+  id              String    @id @default(uuid())
+  tipoDoc         String    @default("DNI")
+  numeroDoc       String
+  nombres         String?
+  apellidos       String?
+  razonSocial     String?
+  direccion       String?
+  telefono        String?
+  email           String?
+  fechaNacimiento DateTime?
+  businessId      String
+  business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sales           Sale[]
+  quotes          Quote[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([numeroDoc, businessId])
+  @@index([businessId])
+}
+
+// ==================== PRODUCTOS ====================
+model Product {
+  id              String    @id @default(uuid())
+  tipo            String    @default("Producto")
+  nombre          String
+  codigo          String?
+  barcode         String?
+  categoria       String?
+  marca           String?
+  moneda          String    @default("PEN")
+  unidadMedida    String    @default("NIU")
+  precioConIGV    Decimal
+  precioSinIGV    Decimal
+  costo           Decimal?
+  stock           Int       @default(0)
+  stockMinimo     Int       @default(0)
+  categoriaSunat  String    @default("Gravada")
+  catalogoVirtual Boolean   @default(false)
+  temporal        Boolean   @default(false)
+  imagen          String?
+  activo          Boolean   @default(true)
+  businessId      String
+  business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleItems       SaleItem[]
+  quoteItems      QuoteItem[]
+  guideItems      GuideItem[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([businessId])
+  @@index([barcode])
+}
+
+// ==================== VENTAS ====================
+model Sale {
+  id             String    @id @default(uuid())
+  tipo           String
+  serie          String
+  correlativo    Int
+  fechaEmision   DateTime  @default(now())
+  moneda         String    @default("PEN")
+  estado         String    @default("Activa")
+  clienteId      String?
+  cliente        Client?   @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  subtotal       Decimal
+  igv            Decimal
+  total          Decimal
+  metodoPago     String    @default("Efectivo")
+  tipoPago       String    @default("Contado")
+  observacion    String?
+  direccionEnvio String?
+  origenCompra   String?
+  businessId     String
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items          SaleItem[]
+  payments       Payment[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([serie, correlativo, businessId])
+  @@index([businessId])
+  @@index([fechaEmision])
+}
+
+model SaleItem {
+  id         String  @id @default(uuid())
+  saleId     String
+  sale       Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  cantidad   Int
+  precioUnit Decimal
+  subtotal   Decimal
+  descuento  Decimal @default(0)
+
+  @@index([saleId])
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  metodo    String
+  monto     Decimal
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+}
+
+// ==================== COTIZACIONES ====================
+model Quote {
+  id             String   @id @default(uuid())
+  serie          String
+  correlativo    Int
+  fechaEmision   DateTime @default(now())
+  moneda         String   @default("PEN")
+  estado         String   @default("Pendiente")
+  clienteId      String?
+  cliente        Client?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  subtotal       Decimal
+  igv            Decimal
+  total          Decimal
+  metodoPago     String   @default("Efectivo")
+  pagos          String?  @default("[]")
+  observacion    String?
+  direccionEnvio String?
+  origenCompra   String?
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items          QuoteItem[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([serie, correlativo, businessId])
+  @@index([businessId])
+}
+
+model QuoteItem {
+  id         String  @id @default(uuid())
+  quoteId    String
+  quote      Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  cantidad   Int
+  precioUnit Decimal
+  subtotal   Decimal
+  descuento  Decimal @default(0)
+
+  @@index([quoteId])
+}
+
+// ==================== GUÍAS DE REMISIÓN ====================
+model Guide {
+  id                   String   @id @default(uuid())
+  serie                String
+  correlativo          Int
+  fechaEmision         DateTime @default(now())
+  destinatarioTipoDoc  String?
+  destinatarioNumDoc   String?
+  destinatarioNombres  String?
+  origenRegion         String?
+  origenProvincia      String?
+  origenDistrito       String?
+  origenDireccion      String?
+  destinoRegion        String?
+  destinoProvincia     String?
+  destinoDistrito      String?
+  destinoDireccion     String?
+  motivoEnvio          String?
+  descripcionMotivo    String?
+  fechaEnvio           DateTime?
+  cantidadBultos       Int?
+  pesoTotal            Decimal?
+  unidadPeso           String?
+  tipoTransporte       String?
+  conductorTipoDoc     String?
+  conductorNumDoc      String?
+  conductorNombres     String?
+  conductorLicencia    String?
+  vehiculoPlaca        String?
+  observacion          String?
+  businessId           String
+  business             Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items                GuideItem[]
+  createdAt            DateTime @default(now())
+
+  @@unique([serie, correlativo, businessId])
+  @@index([businessId])
+}
+
+model GuideItem {
+  id        String  @id @default(uuid())
+  guideId   String
+  guide     Guide   @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  cantidad  Int
+
+  @@index([guideId])
+}
+
+// ==================== CAJA REGISTRADORA ====================
+model CashboxMovement {
+  id         String   @id @default(uuid())
+  tipo       String
+  concepto   String
+  monto      Decimal
+  categoria  String?
+  comprobante String?
+  fecha      DateTime @default(now())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
+  @@index([fecha])
+}
+
+// ==================== GASTOS ====================
+model Expense {
+  id          String   @id @default(uuid())
+  descripcion String
+  categoria   String
+  monto       Decimal
+  pagado      Boolean  @default(true)
+  metodoPago  String?
+  fechaPago   DateTime?
+  proveedor   String?
+  comprobante String?
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([businessId])
+}
+
+// ==================== CUENTAS BANCARIAS ====================
+model BankAccount {
+  id          String   @id @default(uuid())
+  banco       String
+  tipoCuenta  String
+  moneda      String   @default("PEN")
+  numeroCuenta String
+  cci         String?
+  visiblePDF  Boolean  @default(true)
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([businessId])
+}

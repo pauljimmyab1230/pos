@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura</title>
+    <link rel="stylesheet" href="factura.css">
+</head>
+<body>
+    <div class="document">
+        <!-- Header -->
+        <div class="header">
+            <div class="company-logo">
+                <img src="/logo.png" alt="Logo" onerror="this.style.display='none'">
+            </div>
+            <div class="company-info">
+                <h1 class="company-name">{{business.nombreComercial}}</h1>
+                <p class="company-legal">{{business.razonSocial}}</p>
+                <p class="company-address">{{business.direccion}}</p>
+                <p class="company-location">{{business.ubicacion}}</p>
+                <p class="company-phone">{{business.telefono}}</p>
+                <p class="company-email">{{business.email}}</p>
+            </div>
+            <div class="document-info">
+                <div class="ruc-box">
+                    <p>R.U.C. {{business.ruc}}</p>
+                    <h2>FACTURA</h2>
+                    <p>N° {{quote.serie}} - {{quote.correlativo}}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Client Info -->
+        <div class="client-info">
+            <div class="client-left">
+                <p><strong>Señor(es):</strong> {{quote.cliente.razonSocial}}</p>
+                <p><strong>R.U.C. :</strong> {{quote.cliente.numeroDoc}}</p>
+                <p><strong>Dirección:</strong> {{quote.cliente.direccion}}</p>
+                <p><strong>Moneda:</strong> S/ Soles</p>
+            </div>
+            <div class="client-right">
+                <p><strong>F. Emisión:</strong> {{quote.fechaEmision}}</p>
+                <p><strong>Método de Pago:</strong> {{quote.metodoPago}}</p>
+                <p><strong>Tipo de Pago:</strong> Contado</p>
+            </div>
+        </div>
+
+        <!-- Products Table -->
+        <table class="products-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Descripción</th>
+                    <th>Unidad</th>
+                    <th>Cantidad</th>
+                    <th>P. Unitario</th>
+                    <th>Desc.</th>
+                    <th>Sub Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each quote.items}}
+                <tr>
+                    <td>{{@index + 1}}</td>
+                    <td>{{this.product.nombre}}</td>
+                    <td>{{this.product.unidadMedida}}</td>
+                    <td>{{this.cantidad}}</td>
+                    <td>{{this.precioUnit}}</td>
+                    <td>{{this.descuento}}</td>
+                    <td>{{this.subtotal}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div class="totals-section">
+            <table class="totals-table">
+                <tr>
+                    <td class="label">OP. Gravada</td>
+                    <td class="value">{{quote.subtotal}}</td>
+                </tr>
+                <tr>
+                    <td class="label">OP. Inafectas</td>
+                    <td class="value">0.00</td>
+                </tr>
+                <tr>
+                    <td class="label">OP. Exoneradas</td>
+                    <td class="value">0.00</td>
+                </tr>
+                <tr>
+                    <td class="label">Sumatoria IGV (18.00 %)</td>
+                    <td class="value">{{quote.igv}}</td>
+                </tr>
+                <tr class="total-row">
+                    <td class="label">Importe Total</td>
+                    <td class="value">{{quote.total}}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Amount in words -->
+        <div class="amount-words">
+            <p><strong>{{quote.totalEnLetras}}</strong></p>
+        </div>
+
+        <!-- Seller Info -->
+        <div class="seller-info">
+            <p><strong>Vendedor:</strong> {{quote.vendedor}}</p>
+            <p><strong>Correo vendedor:</strong> {{quote.vendedorEmail}}</p>
+        </div>
+
+        <!-- Bank Info -->
+        <div class="bank-info">
+            <p>{{business.cuentasBancarias}}</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Representación impresa del <strong>Comprobante Electrónico</strong></p>
+            <p>Puede ser consultado en <strong>{{business.urlConsulta}}</strong></p>
+            <p class="thanks">GRACIAS POR SU COMPRA</p>
+        </div>
+    </div>
+</body>
+</html>

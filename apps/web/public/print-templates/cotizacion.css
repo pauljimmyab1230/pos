@@ -1,0 +1,249 @@
+@page {
+    size: A4;
+    margin: 10mm;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #000;
+    background: #fff;
+}
+
+.document {
+    width: 190mm;
+    min-height: 277mm;
+    margin: 0 auto;
+    padding: 5mm;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #000;
+}
+
+.company-logo {
+    flex-shrink: 0;
+}
+
+.company-logo img {
+    width: 70px;
+    height: auto;
+}
+
+.company-info {
+    text-align: center;
+    flex: 1;
+    padding: 0 10px;
+}
+
+.company-name {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.company-legal {
+    font-size: 10px;
+    margin-bottom: 2px;
+}
+
+.company-address,
+.company-location,
+.company-phone,
+.company-email {
+    font-size: 9px;
+    margin-bottom: 1px;
+}
+
+.document-info {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.ruc-box {
+    border: 2px solid #000;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.ruc-box p {
+    font-size: 10px;
+    margin-bottom: 2px;
+}
+
+.ruc-box h2 {
+    font-size: 13px;
+    font-weight: bold;
+    margin: 4px 0;
+}
+
+/* Client Info */
+.client-info {
+    display: flex;
+    justify-content: space-between;
+    border: 1px solid #000;
+    padding: 8px;
+    margin-bottom: 12px;
+    font-size: 10px;
+}
+
+.client-left p,
+.client-right p {
+    margin-bottom: 2px;
+}
+
+/* Products Table */
+.products-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    font-size: 10px;
+}
+
+.products-table th,
+.products-table td {
+    border: 1px solid #000;
+    padding: 4px 6px;
+}
+
+.products-table th {
+    background-color: #e8e8e8;
+    font-weight: bold;
+    text-align: center;
+    font-size: 9px;
+}
+
+.products-table td:nth-child(1) {
+    width: 30px;
+    text-align: center;
+}
+
+.products-table td:nth-child(3) {
+    width: 40px;
+    text-align: center;
+}
+
+.products-table td:nth-child(4) {
+    width: 50px;
+    text-align: right;
+}
+
+.products-table td:nth-child(5),
+.products-table td:nth-child(6),
+.products-table td:nth-child(7) {
+    width: 65px;
+    text-align: right;
+}
+
+/* Totals Section */
+.totals-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+
+.totals-table {
+    width: 55%;
+    border-collapse: collapse;
+    font-size: 10px;
+}
+
+.totals-table td {
+    border: 1px solid #000;
+    padding: 4px 8px;
+}
+
+.totals-table .label {
+    text-align: right;
+    font-weight: bold;
+    background-color: #e8e8e8;
+}
+
+.totals-table .value {
+    text-align: right;
+    font-weight: bold;
+    width: 100px;
+}
+
+.totals-table .total-row {
+    background-color: #d0d0d0;
+}
+
+.totals-table .total-row .value {
+    font-size: 12px;
+}
+
+/* Amount in words */
+.amount-words {
+    border: 1px solid #000;
+    padding: 8px;
+    margin-bottom: 12px;
+    font-size: 10px;
+}
+
+/* Seller Info */
+.seller-info {
+    margin-bottom: 8px;
+    font-size: 10px;
+}
+
+.seller-info p {
+    margin-bottom: 2px;
+}
+
+/* Bank Info */
+.bank-info {
+    margin-bottom: 12px;
+    font-size: 9px;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    font-size: 9px;
+    border-top: 1px solid #000;
+    padding-top: 8px;
+    margin-top: 15px;
+}
+
+.footer p {
+    margin-bottom: 2px;
+}
+
+.thanks {
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+/* Print Styles */
+@media print {
+    @page {
+        size: A4;
+        margin: 10mm;
+    }
+    
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .document {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        min-height: auto;
+    }
+}
