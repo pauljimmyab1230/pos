@@ -1,8 +1,20 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth.store';
 import {
-  Home, Package, Users, ShoppingCart, FileText,
-  Clock, BarChart3, Settings, LogOut, Menu, X,
+  Home,
+  Package,
+  Users,
+  ShoppingCart,
+  FileText,
+  Clock,
+  BarChart3,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Wallet,
+  Receipt,
+  Truck,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -13,6 +25,9 @@ const navItems = [
   { to: '/sales', label: 'Punto de Venta', icon: ShoppingCart },
   { to: '/quotes', label: 'Cotizaciones', icon: FileText },
   { to: '/history', label: 'Historial', icon: Clock },
+  { to: '/cashbox', label: 'Caja', icon: Wallet },
+  { to: '/expenses', label: 'Gastos', icon: Receipt },
+  { to: '/guides', label: 'Guías', icon: Truck },
   { to: '/reports', label: 'Reportes', icon: BarChart3 },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];

@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { useToastStore } from '../stores/toast.store';
 import {
-  FileText, FilePlus, ShoppingCart, Package, Users,
-  Receipt, ClipboardList, TrendingUp,
-  TrendingDown, DollarSign,
+  FileText,
+  FilePlus,
+  ShoppingCart,
+  Package,
+  Users,
+  Receipt,
+  ClipboardList,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Wallet,
 } from 'lucide-react';
 
 interface DailySummary {
@@ -15,6 +24,7 @@ interface DailySummary {
 }
 
 export default function HomePage() {
+  const showToast = useToastStore((s) => s.showToast);
   const [summary, setSummary] = useState<DailySummary>({
     comprobantes: 0,
     ingresos: 0,
@@ -23,21 +33,26 @@ export default function HomePage() {
   });
 
   useEffect(() => {
-    api.getDailySummary().then((data) => setSummary(data as DailySummary)).catch(console.error);
+    api
+      .getDailySummary()
+      .then((data) => setSummary(data as DailySummary))
+      .catch(() => showToast('Error al cargar resumen', 'error'));
   }, []);
 
   const shortcuts = [
-    { to: '/sales/new?tipo=BOLETA', label: 'Nueva Boleta', icon: FileText, color: 'bg-red-50 text-red-600' },
-    { to: '/sales/new?tipo=FACTURA', label: 'Nueva Factura', icon: FilePlus, color: 'bg-red-50 text-red-600' },
-    { to: '/sales/new?tipo=COTIZACION', label: 'Nueva Cotización', icon: ClipboardList, color: 'bg-red-50 text-red-600' },
-    { to: '/sales/new?tipo=NOTA_VENTA', label: 'Nueva Nota de Venta', icon: Receipt, color: 'bg-red-50 text-red-600' },
-    { to: '/products', label: 'Productos', icon: Package, color: 'bg-red-50 text-red-600' },
-    { to: '/clients', label: 'Clientes', icon: Users, color: 'bg-red-50 text-red-600' },
+    { to: '/sales/new?tipo=BOLETA', label: 'Nueva Boleta', icon: FileText, color: 'bg-blue-50 text-blue-600' },
+    { to: '/sales/new?tipo=FACTURA', label: 'Nueva Factura', icon: FilePlus, color: 'bg-purple-50 text-purple-600' },
+    { to: '/sales/new?tipo=COTIZACION', label: 'Nueva Cotización', icon: ClipboardList, color: 'bg-yellow-50 text-yellow-600' },
+    { to: '/sales/new?tipo=NOTA_VENTA', label: 'Nueva Nota de Venta', icon: Receipt, color: 'bg-green-50 text-green-600' },
+    { to: '/products', label: 'Productos', icon: Package, color: 'bg-primary-50 text-primary-600' },
+    { to: '/clients', label: 'Clientes', icon: Users, color: 'bg-indigo-50 text-indigo-600' },
     { to: '/sales', label: 'Punto de Venta', icon: ShoppingCart, color: 'bg-red-50 text-red-600' },
+    { to: '/cashbox', label: 'Caja', icon: Wallet, color: 'bg-emerald-50 text-emerald-600' },
   ];
 
   return (
     <div className="space-y-6">
+
       {/* Resumen del día */}
       <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl p-6 text-white">
         <h2 className="text-lg font-semibold mb-4">Resumen del día</h2>

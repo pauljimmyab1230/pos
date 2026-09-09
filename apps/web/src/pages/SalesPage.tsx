@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { useProductsStore } from '../stores/products.store';
+import { useToastStore } from '../stores/toast.store';
+import { ListSkeleton } from '../components/Skeleton';
 import { Search, Grid, List, Package, Wrench } from 'lucide-react';
 import Modal from '../components/Modal';
 import SaleDocumentForm from '../components/SaleDocumentForm';
+import { api } from '../services/api';
 
 interface Product {
   id: string;
@@ -19,7 +22,8 @@ interface CartItem {
 }
 
 export default function SalesPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const { products, loading, loadProducts } = useProductsStore();
+  const showToast = useToastStore((s) => s.showToast);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<string[]>(['Productos', 'Servicios']);
@@ -29,22 +33,15 @@ export default function SalesPage() {
   const [showSaleForm, setShowSaleForm] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await api.getProducts() as Product[];
-        setProducts(data);
-      } catch (error) {
-        console.error(error);
-      }
-    })();
+    loadProducts().catch(() => showToast('Error al cargar productos', 'error'));
   }, []);
 
   const filteredProducts = products.filter(
     (p) =>
       ((activeTab.includes('Productos') && p.tipo === 'Producto') ||
-       (activeTab.includes('Servicios') && p.tipo === 'Servicio')) &&
+        (activeTab.includes('Servicios') && p.tipo === 'Servicio')) &&
       (p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-       p.barcode?.toLowerCase().includes(search.toLowerCase()))
+        p.barcode?.toLowerCase().includes(search.toLowerCase()))
   );
 
   const addToCart = (product: Product) => {
@@ -80,14 +77,16 @@ export default function SalesPage() {
       });
       setCart([]);
       setShowSaleForm(false);
+      showToast('Venta registrada exitosamente', 'success');
     } catch (error) {
-      console.error(error);
+      showToast('Error al registrar la venta', 'error');
       throw error;
     }
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Venta POS</h1>
@@ -122,7 +121,7 @@ export default function SalesPage() {
         <button
           onClick={() => {
             if (activeTab.includes('Productos')) {
-              setActiveTab(activeTab.filter(t => t !== 'Productos'));
+              setActiveTab(activeTab.filter((t) => t !== 'Productos'));
             } else {
               setActiveTab([...activeTab, 'Productos']);
             }
@@ -138,7 +137,7 @@ export default function SalesPage() {
         <button
           onClick={() => {
             if (activeTab.includes('Servicios')) {
-              setActiveTab(activeTab.filter(t => t !== 'Servicios'));
+              setActiveTab(activeTab.filter((t) => t !== 'Servicios'));
             } else {
               setActiveTab([...activeTab, 'Servicios']);
             }
@@ -155,10 +154,12 @@ export default function SalesPage() {
 
       {/* Products Grid */}
       <div className="flex-1 overflow-y-auto">
-        {viewMode === 'grid' ? (
+        {loading ? (
+          <ListSkeleton count={5} />
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {filteredProducts.map((product) => {
-              const inCart = cart.find(item => item.product.id === product.id);
+              const inCart = cart.find((item) => item.product.id === product.id);
               return (
                 <button
                   key={product.id}
@@ -170,9 +171,11 @@ export default function SalesPage() {
                   }`}
                 >
                   <div className="flex items-start justify-between">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      product.tipo === 'Servicio' ? 'bg-blue-50' : 'bg-primary-50'
-                    }`}>
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                        product.tipo === 'Servicio' ? 'bg-blue-50' : 'bg-primary-50'
+                      }`}
+                    >
                       {product.tipo === 'Servicio' ? (
                         <Wrench className="w-6 h-6 text-blue-500" />
                       ) : (
@@ -186,7 +189,9 @@ export default function SalesPage() {
                     )}
                   </div>
                   <p className="font-medium text-gray-900 mt-2 truncate">{product.nombre}</p>
-                  <p className="text-lg font-bold text-primary-500">S/ {Number(product.precioConIGV).toFixed(2)}</p>
+                  <p className="text-lg font-bold text-primary-500">
+                    S/ {Number(product.precioConIGV).toFixed(2)}
+                  </p>
                   <p className={`text-xs ${product.stock <= 0 ? 'text-red-500' : 'text-gray-500'}`}>
                     {product.stock > 0 ? `Stock: ${product.stock}` : 'Sin stock'}
                   </p>
@@ -197,7 +202,7 @@ export default function SalesPage() {
         ) : (
           <div className="space-y-3">
             {filteredProducts.map((product) => {
-              const inCart = cart.find(item => item.product.id === product.id);
+              const inCart = cart.find((item) => item.product.id === product.id);
               return (
                 <button
                   key={product.id}
@@ -208,9 +213,11 @@ export default function SalesPage() {
                       : 'border-gray-200 bg-white hover:border-primary-300'
                   }`}
                 >
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                    product.tipo === 'Servicio' ? 'bg-blue-50' : 'bg-primary-50'
-                  }`}>
+                  <div
+                    className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                      product.tipo === 'Servicio' ? 'bg-blue-50' : 'bg-primary-50'
+                    }`}
+                  >
                     {product.tipo === 'Servicio' ? (
                       <Wrench className="w-7 h-7 text-blue-500" />
                     ) : (
@@ -224,8 +231,12 @@ export default function SalesPage() {
                     </span>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-primary-500">S/ {Number(product.precioConIGV).toFixed(2)}</p>
-                    <p className="text-xs text-gray-500">{product.tipo === 'Servicio' ? 'Servicio' : 'Gravada'}</p>
+                    <p className="text-lg font-bold text-primary-500">
+                      S/ {Number(product.precioConIGV).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {product.tipo === 'Servicio' ? 'Servicio' : 'Gravada'}
+                    </p>
                   </div>
                   {inCart && (
                     <span className="w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
@@ -251,18 +262,26 @@ export default function SalesPage() {
             disabled={cart.length === 0}
             className="w-14 h-14 bg-primary-500 text-white rounded-full flex items-center justify-center hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
           </button>
         </div>
       </div>
 
       {/* Modal Formulario de Venta */}
       <Modal isOpen={showSaleForm} onClose={() => setShowSaleForm(false)} title="Nueva Nota de Venta">
-        <SaleDocumentForm
-          tipo="NOTA_VENTA"
-          initialCart={cart}
-          onSave={handleSaveSale}
-        />
+        <SaleDocumentForm tipo="NOTA_VENTA" initialCart={cart} onSave={handleSaveSale} />
       </Modal>
     </div>
   );

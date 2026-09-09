@@ -1,3 +1,5 @@
+import { Product, ProductFormData } from '../stores/products.store';
+
 const API_BASE = '/api';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -67,17 +69,18 @@ export const api = {
     request(`/clients/${id}`, { method: 'DELETE' }),
 
   // Products
-  getProducts: (params?: Record<string, string>) => {
+  getProducts: (params?: Record<string, string>): Promise<Product[]> => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
     return request(`/products${query}`);
   },
-  getProduct: (id: string) => request(`/products/${id}`),
-  searchByBarcode: (code: string) => request(`/products/barcode/${code}`),
-  createProduct: (data: any) =>
+  getProduct: (id: string): Promise<Product> => request(`/products/${id}`),
+  searchByBarcode: (code: string): Promise<Product | null> =>
+    request(`/products/barcode/${code}`),
+  createProduct: (data: Partial<Product> | ProductFormData): Promise<Product> =>
     request('/products', { method: 'POST', body: JSON.stringify(data) }),
-  updateProduct: (id: string, data: any) =>
+  updateProduct: (id: string, data: Partial<Product>): Promise<void> =>
     request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteProduct: (id: string) =>
+  deleteProduct: (id: string): Promise<void> =>
     request(`/products/${id}`, { method: 'DELETE' }),
 
   // Sales

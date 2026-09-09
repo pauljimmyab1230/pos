@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
-import { api } from '../services/api';
-import { Plus, Search, Edit2, Trash2, Check, XCircle, ChevronLeft, ChevronRight, Grid, List } from 'lucide-react';
+import { useClientsStore } from '../stores/clients.store';
+import { useToastStore } from '../stores/toast.store';
+import { ListSkeleton, GridSkeleton } from '../components/Skeleton';
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Grid,
+  List,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 interface Client {
   id: string;
@@ -15,22 +26,16 @@ interface Client {
   fechaNacimiento?: string;
 }
 
-interface Toast {
-  id: number;
-  message: string;
-  type: 'success' | 'error';
-}
-
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([]);
+  const { clients, loading, loadClients, createClient, updateClient, deleteClient } =
+    useClientsStore();
+  const showToast = useToastStore((s) => s.showToast);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
     return (localStorage.getItem('clients-view-mode') as 'list' | 'grid') || 'list';
   });
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   const [form, setForm] = useState({
@@ -45,29 +50,9 @@ export default function ClientsPage() {
     fechaNacimiento: '',
   });
 
-  const showToast = (message: string, type: 'success' | 'error') => {
-    const id = Date.now();
-    setToasts([...toasts, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(toasts.filter(t => t.id !== id));
-    }, 3000);
-  };
-
   useEffect(() => {
-    loadClients();
+    loadClients().catch(() => showToast('Error al cargar clientes', 'error'));
   }, []);
-
-  const loadClients = async () => {
-    try {
-      const data = await api.getClients() as Client[];
-      setClients(data);
-    } catch (error) {
-      console.error(error);
-      showToast('Error al cargar clientes', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredClients = clients.filter(
     (c) =>
@@ -87,8 +72,7 @@ export default function ClientsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validación de campos obligatorios
+
     if (!form.numeroDoc.trim()) {
       showToast('El número de documento es obligatorio', 'error');
       return;
@@ -101,22 +85,20 @@ export default function ClientsPage() {
       showToast('El nombre es obligatorio', 'error');
       return;
     }
-    
+
     try {
       if (editingClient) {
-        await api.updateClient(editingClient.id, form);
+        await updateClient(editingClient.id, form);
         showToast('Cliente actualizado correctamente', 'success');
       } else {
-        await api.createClient(form);
+        await createClient(form);
         showToast('Cliente creado correctamente', 'success');
       }
 
       setShowForm(false);
       setEditingClient(null);
       resetForm();
-      loadClients();
     } catch (error) {
-      console.error(error);
       showToast('Error al guardar el cliente', 'error');
     }
   };
@@ -140,11 +122,9 @@ export default function ClientsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este cliente?')) return;
     try {
-      await api.deleteClient(id);
+      await deleteClient(id);
       showToast('Cliente eliminado correctamente', 'success');
-      loadClients();
     } catch (error) {
-      console.error(error);
       showToast('Error al eliminar el cliente', 'error');
     }
   };
@@ -179,24 +159,6 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-4">
-      {/* Toast Notifications */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white ${
-              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            }`}
-          >
-            {toast.type === 'success' ? (
-              <Check className="w-5 h-5" />
-            ) : (
-              <XCircle className="w-5 h-5" />
-            )}
-            <span className="font-medium">{toast.message}</span>
-          </div>
-        ))}
-      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -209,11 +171,7 @@ export default function ClientsPage() {
           }}
           className="p-2 text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
         >
-          {viewMode === 'list' ? (
-            <Grid className="w-5 h-5" />
-          ) : (
-            <List className="w-5 h-5" />
-          )}
+          {viewMode === 'list' ? <Grid className="w-5 h-5" /> : <List className="w-5 h-5" />}
         </button>
       </div>
 
@@ -233,14 +191,12 @@ export default function ClientsPage() {
       </div>
 
       {/* Clients List */}
-      {viewMode === 'list' ? (
+      {loading ? (
+        viewMode === 'list' ? <ListSkeleton count={5} /> : <GridSkeleton count={8} />
+      ) : viewMode === 'list' ? (
         <div className="space-y-3">
-          {loading ? (
-            <div className="text-center py-8 text-gray-500">Cargando...</div>
-          ) : paginatedClients.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No se encontraron clientes
-            </div>
+          {paginatedClients.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No se encontraron clientes</div>
           ) : (
             paginatedClients.map((client) => (
               <div
@@ -248,32 +204,27 @@ export default function ClientsPage() {
                 className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow"
               >
                 <div className="flex items-center gap-4">
-                  {/* Avatar */}
                   <div className="w-14 h-14 bg-primary-50 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-lg font-semibold text-primary-600">
                       {getInitials(client)}
                     </span>
                   </div>
 
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900">
-                      {getClientName(client)}
-                    </h3>
+                    <h3 className="font-semibold text-gray-900">{getClientName(client)}</h3>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-sm text-gray-500">
                         {client.tipoDoc}: {client.numeroDoc}
                       </span>
                       {client.telefono && (
-                        <span className="text-sm text-gray-400">|</span>
-                      )}
-                      {client.telefono && (
-                        <span className="text-sm text-gray-500">{client.telefono}</span>
+                        <>
+                          <span className="text-sm text-gray-400">|</span>
+                          <span className="text-sm text-gray-500">{client.telefono}</span>
+                        </>
                       )}
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex gap-2 flex-shrink-0">
                     <button
                       onClick={() => handleEdit(client)}
@@ -294,11 +245,8 @@ export default function ClientsPage() {
           )}
         </div>
       ) : (
-        /* Grid View */
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {loading ? (
-            <div className="col-span-2 text-center py-8 text-gray-500">Cargando...</div>
-          ) : paginatedClients.length === 0 ? (
+          {paginatedClients.length === 0 ? (
             <div className="col-span-2 text-center py-8 text-gray-500">
               No se encontraron clientes
             </div>
@@ -308,13 +256,10 @@ export default function ClientsPage() {
                 key={client.id}
                 className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-sm transition-shadow"
               >
-                {/* Header with gradient */}
                 <div className="bg-gradient-to-br from-primary-400 to-primary-600 p-4">
                   <div className="flex flex-col items-center justify-center py-4">
                     <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-2">
-                      <span className="text-xl font-bold text-white">
-                        {getInitials(client)}
-                      </span>
+                      <span className="text-xl font-bold text-white">{getInitials(client)}</span>
                     </div>
                     <span className="text-white text-xs bg-white/20 px-2 py-1 rounded-full">
                       {client.tipoDoc}
@@ -322,32 +267,24 @@ export default function ClientsPage() {
                   </div>
                 </div>
 
-                {/* Content */}
                 <div className="p-3">
                   <h3 className="font-semibold text-gray-900 text-sm text-center uppercase line-clamp-2 min-h-[40px]">
                     {getClientName(client)}
                   </h3>
-                  <p className="text-xs text-gray-500 text-center mt-1">
-                    {client.numeroDoc}
-                  </p>
+                  <p className="text-xs text-gray-500 text-center mt-1">{client.numeroDoc}</p>
                   {client.telefono && (
-                    <p className="text-xs text-gray-400 text-center mt-1">
-                      {client.telefono}
-                    </p>
+                    <p className="text-xs text-gray-400 text-center mt-1">{client.telefono}</p>
                   )}
-                  {/* Actions */}
                   <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-gray-100">
                     <button
                       onClick={() => handleEdit(client)}
                       className="p-2 text-gray-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
-                      title="Editar"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(client.id)}
                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Eliminar"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -363,7 +300,9 @@ export default function ClientsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-4">
           <p className="text-sm text-gray-500">
-            Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredClients.length)} de {filteredClients.length}
+            Mostrando {(currentPage - 1) * itemsPerPage + 1} -{' '}
+            {Math.min(currentPage * itemsPerPage, filteredClients.length)} de{' '}
+            {filteredClients.length}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -409,7 +348,7 @@ export default function ClientsPage() {
         <Plus className="w-6 h-6" />
       </button>
 
-      {/* Modal Form - Estilo Kallpa */}
+      {/* Modal Form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -419,17 +358,17 @@ export default function ClientsPage() {
               </h2>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              
-              {/* Documento */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1 h-5 bg-primary-500 rounded-full"></div>
                   <h3 className="font-medium text-gray-900">Documento</h3>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo <span className="text-red-500">*</span>
+                    </label>
                     <select
                       value={form.tipoDoc}
                       onChange={(e) => setForm({ ...form, tipoDoc: e.target.value })}
@@ -445,52 +384,39 @@ export default function ClientsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Número <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={form.numeroDoc}
                       onChange={(e) => setForm({ ...form, numeroDoc: e.target.value })}
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                       placeholder={
-                        form.tipoDoc === 'DNI' ? '8 dígitos' :
-                        form.tipoDoc === 'RUC' ? '11 dígitos' :
-                        'Documento'
+                        form.tipoDoc === 'DNI'
+                          ? '8 dígitos'
+                          : form.tipoDoc === 'RUC'
+                          ? '11 dígitos'
+                          : 'Documento'
                       }
                       required
                     />
                   </div>
                 </div>
-                
-                {form.tipoDoc === 'DNI' && (
-                  <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-100">
-                    <p className="text-sm text-red-600 flex items-center gap-2">
-                      <span className="w-5 h-5 bg-red-200 rounded-full flex items-center justify-center text-xs">i</span>
-                      Los datos se buscarán automáticamente al completar el DNI.
-                    </p>
-                  </div>
-                )}
-                
-                {form.tipoDoc === 'RUC' && (
-                  <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-100">
-                    <p className="text-sm text-red-600 flex items-center gap-2">
-                      <span className="w-5 h-5 bg-red-200 rounded-full flex items-center justify-center text-xs">i</span>
-                      La razón social y dirección se buscarán automáticamente al completar el RUC.
-                    </p>
-                  </div>
-                )}
               </div>
 
-              {/* Datos principales */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1 h-5 bg-primary-500 rounded-full"></div>
                   <h3 className="font-medium text-gray-900">Datos principales</h3>
                 </div>
-                
+
                 {form.tipoDoc === 'RUC' ? (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Razón social</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Razón social
+                      </label>
                       <input
                         type="text"
                         value={form.razonSocial}
@@ -500,7 +426,9 @@ export default function ClientsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Dirección
+                      </label>
                       <input
                         type="text"
                         value={form.direccion}
@@ -513,7 +441,9 @@ export default function ClientsPage() {
                 ) : (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nombres <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nombres <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="text"
                         value={form.nombres}
@@ -524,7 +454,9 @@ export default function ClientsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Apellidos</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Apellidos
+                      </label>
                       <input
                         type="text"
                         value={form.apellidos}
@@ -534,7 +466,9 @@ export default function ClientsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Dirección
+                      </label>
                       <input
                         type="text"
                         value={form.direccion}
@@ -544,7 +478,9 @@ export default function ClientsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de nacimiento</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Fecha de nacimiento
+                      </label>
                       <input
                         type="date"
                         value={form.fechaNacimiento}
@@ -556,16 +492,17 @@ export default function ClientsPage() {
                 )}
               </div>
 
-              {/* Datos de contacto */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1 h-5 bg-primary-500 rounded-full"></div>
                   <h3 className="font-medium text-gray-900">Datos de contacto</h3>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Celular</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Celular
+                    </label>
                     <input
                       type="tel"
                       value={form.telefono}
@@ -575,7 +512,9 @@ export default function ClientsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Correo electrónico
+                    </label>
                     <input
                       type="email"
                       value={form.email}
@@ -587,11 +526,13 @@ export default function ClientsPage() {
                 </div>
               </div>
 
-              {/* Botones */}
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={() => { setShowForm(false); setEditingClient(null); }}
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingClient(null);
+                  }}
                   className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
