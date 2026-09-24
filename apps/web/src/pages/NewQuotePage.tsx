@@ -1,33 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { Product, Client, CartItem } from '../../../packages/shared/types';
 import { ArrowLeft, Plus, Search, Check, XCircle, ShoppingCart, ScanLine, Camera, Package, CreditCard, ChevronRight, Trash2 } from 'lucide-react';
-
-interface Product {
-  id: string;
-  tipo: string;
-  nombre: string;
-  precioConIGV: number;
-  stock: number;
-  codigo?: string;
-  barcode?: string;
-}
-
-interface Client {
-  id: string;
-  tipoDoc: string;
-  numeroDoc: string;
-  nombres?: string;
-  apellidos?: string;
-  razonSocial?: string;
-  direccion?: string;
-}
-
-interface CartItem {
-  product: Product;
-  cantidad: number;
-  precioUnit: number;
-}
 
 interface Payment {
   metodo: string;
@@ -80,12 +55,12 @@ export default function NewQuotePage() {
 
   const loadData = async () => {
     try {
-      const [productsData, clientsData] = await Promise.all([
-        api.getProducts() as Promise<Product[]>,
-        api.getClients() as Promise<Client[]>
+      const [productsRes, clientsRes] = await Promise.all([
+        api.getProducts({ limit: '1000' }) as Promise<{ data: Product[]; pagination: any }>,
+        api.getClients({ limit: '1000' }) as Promise<{ data: Client[]; pagination: any }>
       ]);
-      setProducts(productsData);
-      setClients(clientsData);
+      setProducts(productsRes.data);
+      setClients(clientsRes.data);
     } catch (error) {
       showToast('Error al cargar datos', 'error');
     }
@@ -202,39 +177,39 @@ export default function NewQuotePage() {
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
-          <ArrowLeft className="w-5 h-5" />
+        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+          <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
         </button>
-        <h1 className="text-xl font-semibold">Nueva Cotización</h1>
-        <button className="ml-auto p-2 text-primary-500 hover:bg-primary-50 rounded-lg">
-          <span className="w-6 h-6 border-2 border-primary-500 rounded-full flex items-center justify-center text-sm font-bold">i</span>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Nueva Cotización</h1>
+        <button className="ml-auto p-2 text-primary-500 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg">
+          <span className="w-6 h-6 border-2 border-primary-500 dark:border-primary-400 rounded-full flex items-center justify-center text-sm font-bold">i</span>
         </button>
       </div>
 
       {/* Serie, Fecha, Moneda */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Serie</label>
-          <p className="font-medium text-gray-900">CT01</p>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Serie</label>
+          <p className="font-medium text-gray-900 dark:text-white">CT01</p>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Fecha de emisión</label>
-          <p className="font-medium text-gray-900">{new Date().toLocaleDateString('es-PE')}</p>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha de emisión</label>
+          <p className="font-medium text-gray-900 dark:text-white">{new Date().toLocaleDateString('es-PE')}</p>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Moneda</label>
-          <p className="font-medium text-gray-900">PE (Soles)</p>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Moneda</label>
+          <p className="font-medium text-gray-900 dark:text-white">PE (Soles)</p>
         </div>
       </div>
 
       {/* Datos del cliente */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-              <span className="text-primary-500 font-semibold">👤</span>
+            <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+              <span className="text-primary-500 dark:text-primary-400 font-semibold">👤</span>
             </div>
-            <h3 className="font-medium text-gray-900">Datos del cliente</h3>
+            <h3 className="font-medium text-gray-900 dark:text-white">Datos del cliente</h3>
           </div>
           <button
             onClick={() => setShowClientModal(true)}
@@ -246,11 +221,11 @@ export default function NewQuotePage() {
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm text-gray-500 mb-1">Tipo</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
             <select
               value={form.tipoDoc}
               onChange={(e) => setForm({ ...form, tipoDoc: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="DNI">DNI</option>
               <option value="RUC">RUC</option>
@@ -259,12 +234,12 @@ export default function NewQuotePage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-500 mb-1">Número de documento</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Número de documento</label>
             <input
               type="text"
               value={form.numeroDoc}
               onChange={(e) => setForm({ ...form, numeroDoc: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               placeholder="Número de documento"
             />
           </div>
@@ -272,7 +247,7 @@ export default function NewQuotePage() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-500 mb-1">
+            <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">
               {form.tipoDoc === 'RUC' ? 'Razón social' : 'Nombres y apellidos'}
             </label>
             <input
@@ -285,17 +260,17 @@ export default function NewQuotePage() {
                   setForm({ ...form, nombres: e.target.value });
                 }
               }}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               placeholder={form.tipoDoc === 'RUC' ? 'Razón social' : 'Nombres y apellidos'}
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500 mb-1">Dirección</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Dirección</label>
             <input
               type="text"
               value={form.direccion}
               onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               placeholder="Dirección"
             />
           </div>
@@ -303,12 +278,12 @@ export default function NewQuotePage() {
       </div>
 
       {/* Productos y Servicios */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-            <ShoppingCart className="w-5 h-5 text-primary-500" />
+          <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+            <ShoppingCart className="w-5 h-5 text-primary-500 dark:text-primary-400" />
           </div>
-          <h3 className="font-medium text-gray-900">Productos y Servicios</h3>
+          <h3 className="font-medium text-gray-900 dark:text-white">Productos y Servicios</h3>
         </div>
 
         {/* Botones de acción */}
@@ -322,14 +297,14 @@ export default function NewQuotePage() {
           </button>
           <button
             onClick={() => setShowProductModal(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 rounded-xl font-medium hover:bg-primary-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 dark:border-primary-400 dark:text-primary-400 rounded-xl font-medium hover:bg-primary-50 dark:hover:bg-primary-500/10 transition-colors"
           >
             <Camera className="w-5 h-5" />
             Escanear con cámara
           </button>
           <button
             onClick={() => setShowProductModal(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 rounded-xl font-medium hover:bg-primary-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 dark:border-primary-400 dark:text-primary-400 rounded-xl font-medium hover:bg-primary-50 dark:hover:bg-primary-500/10 transition-colors"
           >
             <Package className="w-5 h-5" />
             Agregar manualmente
@@ -337,43 +312,43 @@ export default function NewQuotePage() {
         </div>
 
         {/* Producto temporal */}
-        <button className="w-full py-3 border-2 border-orange-400 text-orange-500 rounded-xl font-medium hover:bg-orange-50 transition-colors mb-4">
+        <button className="w-full py-3 border-2 border-orange-400 text-orange-500 dark:border-orange-400 dark:text-orange-400 rounded-xl font-medium hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-colors mb-4">
           Añadir producto temporal
         </button>
 
         {/* Lista de productos en el carrito */}
         {cart.length === 0 ? (
-          <p className="text-center text-gray-400 py-4">No hay productos agregados</p>
+          <p className="text-center text-gray-400 dark:text-gray-500 py-4">No hay productos agregados</p>
         ) : (
           <div className="space-y-3">
             {cart.map((item) => (
-              <div key={item.product.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-                  <Package className="w-5 h-5 text-primary-500" />
+              <div key={item.product.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+                  <Package className="w-5 h-5 text-primary-500 dark:text-primary-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm truncate">{item.product.nombre}</p>
-                  <p className="text-xs text-gray-500">S/ {item.precioUnit.toFixed(2)}</p>
+                  <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{item.product.nombre}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">S/ {item.precioUnit.toFixed(2)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => updateQuantity(item.product.id, item.cantidad - 1)}
-                    className="w-7 h-7 rounded border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100"
+                    className="w-7 h-7 rounded border border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     -
                   </button>
-                  <span className="w-8 text-center text-sm font-medium">{item.cantidad}</span>
+                  <span className="w-8 text-center text-sm font-medium text-gray-900 dark:text-white">{item.cantidad}</span>
                   <button
                     onClick={() => updateQuantity(item.product.id, item.cantidad + 1)}
-                    className="w-7 h-7 rounded border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100"
+                    className="w-7 h-7 rounded border border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     +
                   </button>
                 </div>
-                <p className="font-medium text-gray-900 text-sm">S/ {(item.precioUnit * item.cantidad).toFixed(2)}</p>
+                <p className="font-medium text-gray-900 dark:text-white text-sm">S/ {(item.precioUnit * item.cantidad).toFixed(2)}</p>
                 <button
                   onClick={() => removeFromCart(item.product.id)}
-                  className="p-1 text-gray-400 hover:text-red-500"
+                  className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -384,12 +359,12 @@ export default function NewQuotePage() {
       </div>
 
       {/* Condición de pago */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-            <CreditCard className="w-5 h-5 text-primary-500" />
+          <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+            <CreditCard className="w-5 h-5 text-primary-500 dark:text-primary-400" />
           </div>
-          <h3 className="font-medium text-gray-900">Condición de pago</h3>
+          <h3 className="font-medium text-gray-900 dark:text-white">Condición de pago</h3>
         </div>
 
         <div className="space-y-3">
@@ -402,7 +377,7 @@ export default function NewQuotePage() {
                   newPayments[index].metodo = e.target.value;
                   setPayments(newPayments);
                 }}
-                className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="Efectivo">Efectivo</option>
                 <option value="Transferencia">Transferencia</option>
@@ -419,13 +394,13 @@ export default function NewQuotePage() {
                   newPayments[index].monto = parseFloat(e.target.value) || 0;
                   setPayments(newPayments);
                 }}
-                className="w-32 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="w-32 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                 placeholder="Monto"
               />
               {payments.length > 1 && (
                 <button
                   onClick={() => setPayments(payments.filter((_, i) => i !== index))}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                  className="p-2 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -436,7 +411,7 @@ export default function NewQuotePage() {
 
         <button
           onClick={() => setPayments([...payments, { metodo: 'Efectivo', monto: 0 }])}
-          className="flex items-center gap-2 mt-3 text-primary-500 font-medium hover:text-primary-600"
+          className="flex items-center gap-2 mt-3 text-primary-500 dark:text-primary-400 font-medium hover:text-primary-600 dark:hover:text-primary-300"
         >
           <Plus className="w-4 h-4" />
           Pago Múltiple
@@ -444,69 +419,69 @@ export default function NewQuotePage() {
       </div>
 
       {/* Información adicional */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-            <span className="text-primary-500 font-bold">ℹ</span>
+          <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+            <span className="text-primary-500 dark:text-primary-400 font-bold">ℹ</span>
           </div>
-          <h3 className="font-medium text-gray-900">Información adicional</h3>
+          <h3 className="font-medium text-gray-900 dark:text-white">Información adicional</h3>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-500 mb-1">Observación</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Observación</label>
             <textarea
               value={form.observacion}
               onChange={(e) => setForm({ ...form, observacion: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               rows={3}
               placeholder="Observaciones..."
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500 mb-1">Dirección de envío</label>
+            <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Dirección de envío</label>
             <input
               type="text"
               value={form.direccionEnvio}
               onChange={(e) => setForm({ ...form, direccionEnvio: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               placeholder="Dirección de envío"
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-500 mb-1">Origen de compra <span className="text-red-500">*</span></label>
-            <div className="flex items-center justify-between px-3 py-2.5 border border-gray-300 rounded-lg">
-              <span className="text-gray-900">{form.origenCompra}</span>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+            <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Origen de compra <span className="text-red-500 dark:text-red-400">*</span></label>
+            <div className="flex items-center justify-between px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+              <span className="text-gray-900 dark:text-white">{form.origenCompra}</span>
+              <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Totales */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4">
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal</span>
-            <span className="text-gray-900">S/ {subtotal.toFixed(2)}</span>
+            <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
+            <span className="text-gray-900 dark:text-white">S/ {subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">IGV (18%)</span>
-            <span className="text-gray-900">S/ {igv.toFixed(2)}</span>
+            <span className="text-gray-500 dark:text-gray-400">IGV (18%)</span>
+            <span className="text-gray-900 dark:text-white">S/ {igv.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-lg font-bold pt-2 border-t">
-            <span className="text-gray-900">Total</span>
-            <span className="text-primary-500">S/ {total.toFixed(2)}</span>
+          <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200 dark:border-gray-700">
+            <span className="text-gray-900 dark:text-white">Total</span>
+            <span className="text-primary-500 dark:text-primary-400">S/ {total.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       {/* Botones fijos abajo */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="max-w-2xl mx-auto flex gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
           >
             Cancelar
           </button>
@@ -522,22 +497,22 @@ export default function NewQuotePage() {
 
       {/* Modal de productos */}
       {showProductModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Seleccionar producto</h3>
-                <button onClick={() => setShowProductModal(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Seleccionar producto</h3>
+                <button onClick={() => setShowProductModal(false)} className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                   <XCircle className="w-5 h-5" />
                 </button>
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
                   value={searchProduct}
                   onChange={(e) => setSearchProduct(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Buscar producto..."
                 />
               </div>
@@ -547,16 +522,16 @@ export default function NewQuotePage() {
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
                 >
-                  <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-                    <Package className="w-5 h-5 text-primary-500" />
+                  <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+                    <Package className="w-5 h-5 text-primary-500 dark:text-primary-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{product.nombre}</p>
-                    <p className="text-sm text-gray-500">Stock: {product.stock}</p>
+                    <p className="font-medium text-gray-900 dark:text-white truncate">{product.nombre}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Stock: {product.stock}</p>
                   </div>
-                  <p className="font-bold text-primary-500">S/ {Number(product.precioConIGV).toFixed(2)}</p>
+                  <p className="font-bold text-primary-500 dark:text-primary-400">S/ {Number(product.precioConIGV).toFixed(2)}</p>
                 </button>
               ))}
             </div>
@@ -566,22 +541,22 @@ export default function NewQuotePage() {
 
       {/* Modal de clientes */}
       {showClientModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Seleccionar cliente</h3>
-                <button onClick={() => setShowClientModal(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Seleccionar cliente</h3>
+                <button onClick={() => setShowClientModal(false)} className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                   <XCircle className="w-5 h-5" />
                 </button>
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
                   value={searchClient}
                   onChange={(e) => setSearchClient(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Buscar cliente..."
                 />
               </div>
@@ -591,18 +566,18 @@ export default function NewQuotePage() {
                 <button
                   key={client.id}
                   onClick={() => selectClient(client)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
                 >
-                  <div className="w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center">
-                    <span className="text-primary-500 font-semibold text-sm">
+                  <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-full flex items-center justify-center">
+                    <span className="text-primary-500 dark:text-primary-400 font-semibold text-sm">
                       {client.nombres?.charAt(0) || client.razonSocial?.charAt(0) || 'C'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
+                    <p className="font-medium text-gray-900 dark:text-white truncate">
                       {client.razonSocial || `${client.nombres || ''} ${client.apellidos || ''}`.trim()}
                     </p>
-                    <p className="text-sm text-gray-500">{client.tipoDoc}: {client.numeroDoc}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{client.tipoDoc}: {client.numeroDoc}</p>
                   </div>
                 </button>
               ))}

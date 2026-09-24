@@ -58,18 +58,21 @@ export const api = {
     request(`/users/${id}`, { method: 'DELETE' }),
 
   // Clients
-  getClients: () => request('/clients'),
+  getClients: (params?: Record<string, string>): Promise<{ data: any[]; pagination: any }> => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request(`/clients${query}`);
+  },
   getClient: (id: string) => request(`/clients/${id}`),
-  searchClient: (doc: string) => request(`/clients/search/${doc}`),
-  createClient: (data: any) =>
+  searchClient: (doc: string) => request(`/clients/search/${encodeURIComponent(doc)}`),
+  createClient: (data: any): Promise<any> =>
     request('/clients', { method: 'POST', body: JSON.stringify(data) }),
-  updateClient: (id: string, data: any) =>
+  updateClient: (id: string, data: any): Promise<any> =>
     request(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteClient: (id: string) =>
+  deleteClient: (id: string): Promise<void> =>
     request(`/clients/${id}`, { method: 'DELETE' }),
 
   // Products
-  getProducts: (params?: Record<string, string>): Promise<Product[]> => {
+  getProducts: (params?: Record<string, string>): Promise<{ data: Product[]; pagination: any }> => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
     return request(`/products${query}`);
   },
@@ -78,35 +81,38 @@ export const api = {
     request(`/products/barcode/${code}`),
   createProduct: (data: Partial<Product> | ProductFormData): Promise<Product> =>
     request('/products', { method: 'POST', body: JSON.stringify(data) }),
-  updateProduct: (id: string, data: Partial<Product>): Promise<void> =>
+  updateProduct: (id: string, data: Partial<Product>): Promise<Product> =>
     request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteProduct: (id: string): Promise<void> =>
     request(`/products/${id}`, { method: 'DELETE' }),
 
   // Sales
-  getSales: (params?: Record<string, string>) => {
+  getSales: (params?: Record<string, string>): Promise<{ data: any[]; pagination: any }> => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
     return request(`/sales${query}`);
   },
   getSale: (id: string) => request(`/sales/${id}`),
-  createSale: (data: any) =>
+  createSale: (data: any): Promise<any> =>
     request('/sales', { method: 'POST', body: JSON.stringify(data) }),
-  updateSale: (id: string, data: any) =>
+  updateSale: (id: string, data: any): Promise<any> =>
     request(`/sales/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  cancelSale: (id: string) =>
+  cancelSale: (id: string): Promise<any> =>
     request(`/sales/${id}/cancel`, { method: 'PUT' }),
   getDailySummary: () => request('/sales/daily'),
 
   // Quotes
-  getQuotes: () => request('/quotes?' + Date.now()),
-  getQuote: (id: string) => request(`/quotes/${id}?${Date.now()}`),
-  createQuote: (data: any) =>
+  getQuotes: (params?: Record<string, string>): Promise<{ data: any[]; pagination: any }> => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request(`/quotes${query}`);
+  },
+  getQuote: (id: string) => request(`/quotes/${id}`),
+  createQuote: (data: any): Promise<any> =>
     request('/quotes', { method: 'POST', body: JSON.stringify(data) }),
-  updateQuote: (id: string, data: any) =>
+  updateQuote: (id: string, data: any): Promise<any> =>
     request(`/quotes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteQuote: (id: string) =>
+  deleteQuote: (id: string): Promise<void> =>
     request(`/quotes/${id}`, { method: 'DELETE' }),
-  convertQuote: (id: string) =>
+  convertQuote: (id: string): Promise<any> =>
     request(`/quotes/${id}/convert`, { method: 'PUT' }),
 
   // Guides

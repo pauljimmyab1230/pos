@@ -1,8 +1,45 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../../main';
 import { authMiddleware, AuthRequest } from '../../shared/middlewares/auth.middleware';
 
 const router = Router();
+
+// ==================== VALIDACIONES ====================
+const guideItemSchema = z.object({
+  productId: z.string().min(1, 'ID de producto requerido'),
+  cantidad: z.number().int().positive('La cantidad debe ser mayor a 0'),
+});
+
+const guideSchema = z.object({
+  destinatarioTipoDoc: z.string().max(10).optional().nullable(),
+  destinatarioNumDoc: z.string().max(20).optional().nullable(),
+  destinatarioNombres: z.string().max(100).optional().nullable(),
+  origenRegion: z.string().max(50).optional().nullable(),
+  origenProvincia: z.string().max(50).optional().nullable(),
+  origenDistrito: z.string().max(50).optional().nullable(),
+  origenDireccion: z.string().max(200).optional().nullable(),
+  destinoRegion: z.string().max(50).optional().nullable(),
+  destinoProvincia: z.string().max(50).optional().nullable(),
+  destinoDistrito: z.string().max(50).optional().nullable(),
+  destinoDireccion: z.string().max(200).optional().nullable(),
+  motivoEnvio: z.string().max(100).optional().nullable(),
+  descripcionMotivo: z.string().max(200).optional().nullable(),
+  fechaEnvio: z.string().optional().nullable(),
+  cantidadBultos: z.number().int().positive().optional().nullable(),
+  pesoTotal: z.number().positive().optional().nullable(),
+  unidadPeso: z.string().max(10).optional().nullable(),
+  tipoTransporte: z.string().max(20).optional().nullable(),
+  conductorTipoDoc: z.string().max(10).optional().nullable(),
+  conductorNumDoc: z.string().max(20).optional().nullable(),
+  conductorNombres: z.string().max(100).optional().nullable(),
+  conductorLicencia: z.string().max(20).optional().nullable(),
+  vehiculoPlaca: z.string().max(10).optional().nullable(),
+  observacion: z.string().max(200).optional().nullable(),
+  items: z.array(guideItemSchema).min(1, 'Debe agregar al menos un producto'),
+});
+
+// ==================== RUTAS ====================
 
 // GET /api/guides
 router.get('/', authMiddleware, async (req: AuthRequest, res) => {
@@ -35,15 +72,12 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res) => {
 // POST /api/guides
 router.post('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const {
-      destinatarioTipoDoc, destinatarioNumDoc, destinatarioNombres,
-      origenRegion, origenProvincia, origenDistrito, origenDireccion,
-      destinoRegion, destinoProvincia, destinoDistrito, destinoDireccion,
-      motivoEnvio, descripcionMotivo, fechaEnvio, cantidadBultos,
-      pesoTotal, unidadPeso, tipoTransporte, conductorTipoDoc,
-      conductorNumDoc, conductorNombres, conductorLicencia,
-      vehiculoPlaca, observacion, items,
-    } = req.body;
+    const parsed = guideSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() });
+    }
+
+    const { items, fechaEnvio, ...guideData } = parsed.data;
 
     const serieRecord = await prisma.series.findFirst({
       where: { tipo: 'GUIA', businessId: req.businessId },
@@ -53,48 +87,31 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
 
     const nuevoCorrelativo = serieRecord.numeroActual + 1;
 
-    const guide = await prisma.guide.create({
-      data: {
-        serie: serieRecord.prefijo,
-        correlativo: nuevoCorrelativo,
-        destinatarioTipoDoc,
-        destinatarioNumDoc,
-        destinatarioNombres,
-        origenRegion,
-        origenProvincia,
-        origenDistrito,
-        origenDireccion,
-        destinoRegion,
-        destinoProvincia,
-        destinoDistrito,
-        destinoDireccion,
-        motivoEnvio,
-        descripcionMotivo,
-        fechaEnvio: fechaEnvio ? new Date(fechaEnvio) : null,
-        cantidadBultos,
-        pesoTotal,
-        unidadPeso,
-        tipoTransporte,
-        conductorTipoDoc,
-        conductorNumDoc,
-        conductorNombres,
-        conductorLicencia,
-        vehiculoPlaca,
-        observacion,
-        businessId: req.businessId!,
-        items: {
-          create: items.map((item: any) => ({
-            productId: item.productId,
-            cantidad: item.cantidad,
-          })),
+    // Usar transacción para garantizar atomicidad
+    const guide = await prisma.$transaction(async (tx) => {
+      const newGuide = await tx.guide.create({
+        data: {
+          ...guideData,
+          serie: serieRecord.prefijo,
+          correlativo: nuevoCorrelativo,
+          fechaEnvio: fechaEnvio ? new Date(fechaEnvio) : null,
+          businessId: req.businessId!,
+          items: {
+            create: items.map((item) => ({
+              productId: item.productId,
+              cantidad: item.cantidad,
+            })),
+          },
         },
-      },
-      include: { items: true },
-    });
+        include: { items: true },
+      });
 
-    await prisma.series.update({
-      where: { id: serieRecord.id },
-      data: { numeroActual: nuevoCorrelativo },
+      await tx.series.update({
+        where: { id: serieRecord.id },
+        data: { numeroActual: nuevoCorrelativo },
+      });
+
+      return newGuide;
     });
 
     res.status(201).json(guide);

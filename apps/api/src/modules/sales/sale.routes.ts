@@ -1,13 +1,39 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../../main';
 import { authMiddleware, AuthRequest } from '../../shared/middlewares/auth.middleware';
 
 const router = Router();
 
-// GET /api/sales
+// ==================== VALIDACIONES ====================
+const saleItemSchema = z.object({
+  productId: z.string().uuid('ID de producto inválido'),
+  cantidad: z.number().int().positive('La cantidad debe ser mayor a 0'),
+  precioUnit: z.number().positive('El precio debe ser mayor a 0'),
+  descuento: z.number().min(0).optional().default(0),
+});
+
+const saleSchema = z.object({
+  tipo: z.enum(['NOTA_VENTA', 'BOLETA', 'FACTURA']).default('NOTA_VENTA'),
+  clienteId: z.string().uuid().optional().nullable(),
+  items: z.array(saleItemSchema).min(1, 'Debe agregar al menos un producto'),
+  metodoPago: z.enum(['Efectivo', 'Transferencia', 'Tarjeta', 'Yape', 'Plin']).default('Efectivo'),
+  tipoPago: z.enum(['Contado', 'Credito']).default('Contado'),
+  observacion: z.string().max(200).optional().nullable(),
+  direccionEnvio: z.string().max(200).optional().nullable(),
+  origenCompra: z.string().max(100).optional().nullable(),
+  pagos: z.array(z.object({
+    metodo: z.string(),
+    monto: z.number().positive(),
+  })).optional(),
+});
+
+// ==================== RUTAS ====================
+
+// GET /api/sales - Listar ventas con paginación
 router.get('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { tipo, desde, hasta, clienteId } = req.query;
+    const { tipo, desde, hasta, clienteId, page, limit } = req.query;
 
     const where: any = { businessId: req.businessId };
 
@@ -19,24 +45,42 @@ router.get('/', authMiddleware, async (req: AuthRequest, res) => {
       if (hasta) where.fechaEmision.lte = new Date(String(hasta) + 'T23:59:59');
     }
 
-    const sales = await prisma.sale.findMany({
-      where,
-      include: {
-        cliente: true,
-        items: { include: { product: true } },
-        payments: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Paginación
+    const pageNum = Math.max(1, parseInt(String(page)) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(String(limit)) || 20));
+    const skip = (pageNum - 1) * pageSize;
 
-    res.json(sales);
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        include: {
+          cliente: true,
+          items: { include: { product: true } },
+          payments: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.sale.count({ where }),
+    ]);
+
+    res.json({
+      data: sales,
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (error) {
     console.error('Error al obtener ventas:', error);
     res.status(500).json({ error: 'Error al obtener ventas' });
   }
 });
 
-// GET /api/sales/daily
+// GET /api/sales/daily - Resumen del día
 router.get('/daily', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const today = new Date();
@@ -77,7 +121,7 @@ router.get('/daily', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-// GET /api/sales/:id
+// GET /api/sales/:id - Obtener venta por ID
 router.get('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const sale = await prisma.sale.findFirst({
@@ -95,13 +139,23 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-// POST /api/sales
+// POST /api/sales - Crear venta
 router.post('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const {
-      tipo, clienteId, items, metodoPago, tipoPago,
-      observacion, direccionEnvio, origenCompra, pagos,
-    } = req.body;
+    const parsed = saleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() });
+    }
+
+    const { tipo, clienteId, items, metodoPago, tipoPago, observacion, direccionEnvio, origenCompra, pagos } = parsed.data;
+
+    // Obtener IGV del negocio
+    const business = await prisma.business.findUnique({
+      where: { id: req.businessId! },
+      select: { igv: true },
+    });
+    const igvRate = (business?.igv || 18) / 100;
+    const igvMultiplier = 1 + igvRate;
 
     // Obtener serie y correlativo
     const serieRecord = await prisma.series.findFirst({
@@ -112,22 +166,22 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
     });
 
     if (!serieRecord) {
-      return res.status(400).json({ error: 'Serie no encontrada' });
+      return res.status(400).json({ error: 'Serie no encontrada para este tipo de documento' });
     }
 
     const nuevoCorrelativo = serieRecord.numeroActual + 1;
     const prefijo = serieRecord.prefijo;
 
-    // Los precios ya incluyen IGV, calculamos correctamente
-    const total = items.reduce((sum: number, item: any) => sum + Number(item.precioUnit) * item.cantidad, 0);
-    const subtotal = total / 1.18;
+    // Calcular totales con IGV dinámico
+    const total = items.reduce((sum, item) => sum + item.precioUnit * item.cantidad, 0);
+    const subtotal = total / igvMultiplier;
     const igvTotal = total - subtotal;
 
-    const itemsData = items.map((item: any) => ({
+    const itemsData = items.map((item) => ({
       productId: item.productId,
       cantidad: item.cantidad,
-      precioUnit: Number(item.precioUnit),
-      subtotal: Number(item.precioUnit) * item.cantidad / 1.18,
+      precioUnit: item.precioUnit,
+      subtotal: (item.precioUnit * item.cantidad) / igvMultiplier,
       descuento: item.descuento || 0,
     }));
 
@@ -143,8 +197,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
           subtotal,
           igv: igvTotal,
           total,
-          metodoPago: metodoPago || 'Efectivo',
-          tipoPago: tipoPago || 'Contado',
+          metodoPago,
+          tipoPago,
           observacion,
           direccionEnvio,
           origenCompra,
@@ -152,8 +206,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
           userId: req.userId,
           items: { create: itemsData },
           payments: pagos
-            ? { create: pagos.map((p: any) => ({ metodo: p.metodo, monto: p.monto })) }
-            : { create: [{ metodo: metodoPago || 'Efectivo', monto: total }] },
+            ? { create: pagos.map((p) => ({ metodo: p.metodo, monto: p.monto })) }
+            : { create: [{ metodo: metodoPago, monto: total }] },
         },
         include: { items: true, payments: true },
       });
@@ -167,13 +221,19 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
       // Actualizar stock (validar stock suficiente)
       for (const item of items) {
         const product = await tx.product.findUnique({ where: { id: item.productId } });
-        if (product && product.stock < item.cantidad) {
+        if (!product) {
+          throw new Error(`Producto con ID ${item.productId} no encontrado`);
+        }
+        if (product.tipo === 'Producto' && product.stock < item.cantidad) {
           throw new Error(`Stock insuficiente para ${product.nombre}. Stock actual: ${product.stock}`);
         }
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.cantidad } },
-        });
+        // Solo decrementar stock si es producto (no servicio)
+        if (product.tipo === 'Producto') {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.cantidad } },
+          });
+        }
       }
 
       return newSale;
@@ -182,23 +242,28 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
     res.status(201).json(sale);
   } catch (error: any) {
     console.error('Error al crear venta:', error);
-    if (error.message?.includes('Stock insuficiente')) {
+    if (error.message?.includes('Stock insuficiente') || error.message?.includes('no encontrado')) {
       return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: 'Error al crear venta' });
   }
 });
 
-// PUT /api/sales/:id
+// PUT /api/sales/:id - Actualizar venta (solo tipo de documento)
 router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { tipo } = req.body;
+
+    if (!tipo || !['NOTA_VENTA', 'BOLETA', 'FACTURA'].includes(tipo)) {
+      return res.status(400).json({ error: 'Tipo de documento inválido' });
+    }
 
     const sale = await prisma.sale.findFirst({
       where: { id: req.params.id as string, businessId: req.businessId },
     });
 
     if (!sale) return res.status(404).json({ error: 'Venta no encontrada' });
+    if (sale.estado === 'Anulada') return res.status(400).json({ error: 'No se puede modificar una venta anulada' });
 
     // Obtener la serie correspondiente al nuevo tipo
     const serieRecord = await prisma.series.findFirst({
@@ -239,12 +304,12 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-// PUT /api/sales/:id/cancel
+// PUT /api/sales/:id/cancel - Anular venta
 router.put('/:id/cancel', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const sale = await prisma.sale.findFirst({
       where: { id: req.params.id as string, businessId: req.businessId },
-      include: { items: true },
+      include: { items: { include: { product: true } } },
     });
 
     if (!sale) return res.status(404).json({ error: 'Venta no encontrada' });
@@ -252,12 +317,14 @@ router.put('/:id/cancel', authMiddleware, async (req: AuthRequest, res) => {
 
     // Usar transacción para restaurar stock y anular venta
     await prisma.$transaction(async (tx) => {
-      // Restaurar stock
+      // Restaurar stock solo si es producto (no servicio)
       for (const item of sale.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.cantidad } },
-        });
+        if (item.product.tipo === 'Producto') {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.cantidad } },
+          });
+        }
       }
 
       // Anular venta

@@ -38,6 +38,10 @@ export interface Client {
   telefono?: string;
   email?: string;
   fechaNacimiento?: string;
+  notas?: string;
+  activo: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // ==================== PRODUCTOS ====================
@@ -72,6 +76,12 @@ export interface SaleItem {
   subtotal?: number;
   descuento?: number;
   product?: Product;
+}
+
+export interface CartItem {
+  product: Product;
+  cantidad: number;
+  precioUnit: number;
 }
 
 export interface Payment {
@@ -237,6 +247,14 @@ export interface MonthlyReport {
   mes: string;
   totalVentas: number;
   cantidadComprobantes: number;
+}
+
+// ==================== PAGINACION ====================
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 // ==================== API RESPONSES ====================

@@ -1,8 +1,20 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../../main';
 import { authMiddleware, AuthRequest } from '../../shared/middlewares/auth.middleware';
 
 const router = Router();
+
+// ==================== VALIDACIONES ====================
+const movementSchema = z.object({
+  tipo: z.enum(['INGRESO', 'EGRESO']),
+  concepto: z.string().min(1, 'El concepto es requerido').max(200),
+  monto: z.number().positive('El monto debe ser mayor a 0'),
+  categoria: z.string().max(50).optional().nullable(),
+  comprobante: z.string().max(50).optional().nullable(),
+});
+
+// ==================== RUTAS ====================
 
 // GET /api/cashbox/balance
 router.get('/balance', authMiddleware, async (req: AuthRequest, res) => {
@@ -41,7 +53,12 @@ router.get('/balance', authMiddleware, async (req: AuthRequest, res) => {
 // POST /api/cashbox/movement
 router.post('/movement', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { tipo, concepto, monto, categoria, comprobante } = req.body;
+    const parsed = movementSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() });
+    }
+
+    const { tipo, concepto, monto, categoria, comprobante } = parsed.data;
 
     const movement = await prisma.cashboxMovement.create({
       data: {
@@ -64,7 +81,7 @@ router.post('/movement', authMiddleware, async (req: AuthRequest, res) => {
 // GET /api/cashbox/history
 router.get('/history', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { desde, hasta } = req.query;
+    const { desde, hasta, page, limit } = req.query;
 
     const where: any = { businessId: req.businessId };
 
@@ -74,12 +91,30 @@ router.get('/history', authMiddleware, async (req: AuthRequest, res) => {
       if (hasta) where.fecha.lte = new Date(String(hasta) + 'T23:59:59');
     }
 
-    const movimientos = await prisma.cashboxMovement.findMany({
-      where,
-      orderBy: { fecha: 'desc' },
-    });
+    // Paginación
+    const pageNum = Math.max(1, parseInt(String(page)) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(String(limit)) || 50));
+    const skip = (pageNum - 1) * pageSize;
 
-    res.json(movimientos);
+    const [movimientos, total] = await Promise.all([
+      prisma.cashboxMovement.findMany({
+        where,
+        orderBy: { fecha: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.cashboxMovement.count({ where }),
+    ]);
+
+    res.json({
+      data: movimientos,
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener historial' });
   }

@@ -23,6 +23,15 @@ router.put('/series', authMiddleware, async (req: AuthRequest, res) => {
     const { series } = req.body;
 
     for (const s of series) {
+      // Verificar que la serie pertenece al business
+      const existingSeries = await prisma.series.findFirst({
+        where: { id: s.id, businessId: req.businessId },
+      });
+      
+      if (!existingSeries) {
+        return res.status(404).json({ error: `Serie ${s.id} no encontrada` });
+      }
+
       await prisma.series.update({
         where: { id: s.id },
         data: { prefijo: s.prefijo },
@@ -73,13 +82,17 @@ router.post('/banks', authMiddleware, async (req: AuthRequest, res) => {
 // PUT /api/settings/banks/:id
 router.put('/banks/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
+    const existingBank = await prisma.bankAccount.findFirst({
+      where: { id: req.params.id as string, businessId: req.businessId },
+    });
+    if (!existingBank) {
+      return res.status(404).json({ error: 'Cuenta bancaria no encontrada' });
+    }
     const { banco, tipoCuenta, moneda, numeroCuenta, cci, visiblePDF } = req.body;
-
     const bank = await prisma.bankAccount.update({
       where: { id: req.params.id as string },
       data: { banco, tipoCuenta, moneda, numeroCuenta, cci, visiblePDF },
     });
-
     res.json(bank);
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar cuenta bancaria' });
@@ -89,6 +102,12 @@ router.put('/banks/:id', authMiddleware, async (req: AuthRequest, res) => {
 // DELETE /api/settings/banks/:id
 router.delete('/banks/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
+    const existingBank = await prisma.bankAccount.findFirst({
+      where: { id: req.params.id as string, businessId: req.businessId },
+    });
+    if (!existingBank) {
+      return res.status(404).json({ error: 'Cuenta bancaria no encontrada' });
+    }
     await prisma.bankAccount.delete({ where: { id: req.params.id as string } });
     res.json({ message: 'Cuenta bancaria eliminada' });
   } catch (error) {
@@ -97,3 +116,6 @@ router.delete('/banks/:id', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 export default router;
+
+
+

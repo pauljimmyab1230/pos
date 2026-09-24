@@ -1,9 +1,23 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../main';
 import { authMiddleware, AuthRequest } from '../../shared/middlewares/auth.middleware';
 
 const router = Router();
+
+// ==================== VALIDACIONES ====================
+const userCreateSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es requerido').max(100),
+  email: z.string().email('Email inválido').max(100),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  rol: z.enum(['Admin', 'Vendedor', 'Cajero']).default('Vendedor'),
+});
+
+const userUpdateSchema = z.object({
+  nombre: z.string().min(1).max(100).optional(),
+  rol: z.enum(['Admin', 'Vendedor', 'Cajero']).optional(),
+});
 
 // GET /api/users
 router.get('/', authMiddleware, async (req: AuthRequest, res) => {
@@ -48,7 +62,12 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res) => {
 // POST /api/users
 router.post('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { nombre, email, password, rol } = req.body;
+    const parsed = userCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() });
+    }
+
+    const { nombre, email, password, rol } = parsed.data;
 
     // Verificar si el email ya existe
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -63,7 +82,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
         nombre,
         email,
         password: hashedPassword,
-        rol: rol || 'Vendedor',
+        rol,
         businessId: req.businessId!,
       },
       select: {
@@ -85,7 +104,21 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
 // PUT /api/users/:id
 router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { nombre, rol } = req.body;
+    // Verificar que el usuario pertenece al business
+    const existingUser = await prisma.user.findFirst({
+      where: { id: req.params.id as string, businessId: req.businessId },
+    });
+    
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const parsed = userUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() });
+    }
+
+    const { nombre, rol } = parsed.data;
 
     const user = await prisma.user.update({
       where: { id: req.params.id as string },
@@ -111,6 +144,15 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res) => {
     // No permitir eliminar el usuario admin actual
     if (req.params.id === req.userId) {
       return res.status(400).json({ error: 'No puedes eliminar tu propio usuario' });
+    }
+
+    // Verificar que el usuario pertenece al business
+    const existingUser = await prisma.user.findFirst({
+      where: { id: req.params.id as string, businessId: req.businessId },
+    });
+    
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     await prisma.user.delete({

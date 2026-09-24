@@ -30,8 +30,8 @@ export const useCashboxStore = create<CashboxState>((set) => ({
   loadBalance: async () => {
     set({ loading: true, error: null });
     try {
-      const data = (await api.getBalance()) as { balance: number };
-      set({ balance: data.balance, loading: false });
+      const data = (await api.getBalance()) as { ingresos: number; egresos: number; saldo: number };
+      set({ balance: data.saldo, loading: false });
     } catch (error) {
       set({ error: 'Error al cargar saldo', loading: false });
       throw error;

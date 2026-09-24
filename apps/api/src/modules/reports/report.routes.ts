@@ -7,7 +7,7 @@ const router = Router();
 // GET /api/reports/sales
 router.get('/sales', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { desde, hasta } = req.query;
+    const { desde, hasta, page, limit } = req.query;
 
     const where: any = {
       businessId: req.businessId,
@@ -20,21 +20,43 @@ router.get('/sales', authMiddleware, async (req: AuthRequest, res) => {
       if (hasta) where.fechaEmision.lte = new Date(String(hasta) + 'T23:59:59');
     }
 
-    const sales = await prisma.sale.findMany({
+    // Paginación
+    const pageNum = Math.max(1, parseInt(String(page)) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(String(limit)) || 50));
+    const skip = (pageNum - 1) * pageSize;
+
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        include: { cliente: true, items: true },
+        orderBy: { fechaEmision: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.sale.count({ where }),
+    ]);
+
+    // Calcular totales de todas las ventas (no solo las de la página)
+    const allSales = await prisma.sale.findMany({
       where,
-      include: { cliente: true, items: true },
-      orderBy: { fechaEmision: 'desc' },
+      select: { total: true, igv: true },
     });
 
-    const totalVentas = sales.reduce((sum, s) => sum + Number(s.total), 0);
-    const totalIGV = sales.reduce((sum, s) => sum + Number(s.igv), 0);
+    const totalVentas = allSales.reduce((sum, s) => sum + Number(s.total), 0);
+    const totalIGV = allSales.reduce((sum, s) => sum + Number(s.igv), 0);
 
     res.json({
-      ventas: sales,
+      data: sales,
       resumen: {
         totalVentas,
         totalIGV,
-        cantidadComprobantes: sales.length,
+        cantidadComprobantes: total,
+      },
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
       },
     });
   } catch (error) {

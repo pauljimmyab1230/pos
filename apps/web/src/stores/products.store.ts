@@ -3,7 +3,7 @@ import { api } from '../services/api';
 
 // ==================== CONSTANTES ====================
 export const REORDER_POINT = 5;
-export const DEFAULT_PAGE_SIZE = 12;
+export const DEFAULT_PAGE_SIZE = 50;
 
 // ==================== TIPOS ====================
 export interface Product {
@@ -58,6 +58,13 @@ export interface InventoryStats {
   porReponer: number;
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 // ==================== ESTADO ====================
 interface ProductsState {
   products: Product[];
@@ -66,9 +73,10 @@ interface ProductsState {
   updating: boolean;
   deleting: boolean;
   error: string | null;
+  pagination: PaginationInfo;
   
   // Acciones
-  loadProducts: () => Promise<void>;
+  loadProducts: (page?: number, limit?: number) => Promise<void>;
   createProduct: (data: Partial<Product>) => Promise<Product>;
   updateProduct: (id: string, data: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
@@ -92,12 +100,27 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   updating: false,
   deleting: false,
   error: null,
+  pagination: {
+    page: 1,
+    limit: DEFAULT_PAGE_SIZE,
+    total: 0,
+    totalPages: 0,
+  },
 
   loadProducts: async () => {
     set({ loading: true, error: null });
     try {
-      const data = (await api.getProducts()) as Product[];
-      set({ products: data, loading: false });
+      // Cargamos todos los productos para poder filtrar en el frontend
+      // En el futuro se pueden mover los filtros al backend
+      const response = (await api.getProducts({ limit: '1000' })) as {
+        data: Product[];
+        pagination: PaginationInfo;
+      };
+      set({ 
+        products: response.data, 
+        pagination: response.pagination,
+        loading: false 
+      });
     } catch (error) {
       set({ error: 'Error al cargar productos', loading: false });
       throw error;
@@ -122,10 +145,10 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   updateProduct: async (id, data) => {
     set({ updating: true, error: null });
     try {
-      await api.updateProduct(id, data);
+      const updatedProduct = (await api.updateProduct(id, data)) as Product;
       set((state) => ({
         products: state.products.map((p) =>
-          p.id === id ? { ...p, ...data } : p
+          p.id === id ? updatedProduct : p
         ),
         updating: false,
       }));

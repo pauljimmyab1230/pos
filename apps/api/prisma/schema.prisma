@@ -81,6 +81,8 @@ model Client {
   telefono        String?
   email           String?
   fechaNacimiento DateTime?
+  notas           String?
+  activo          Boolean   @default(true)
   businessId      String
   business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   sales           Sale[]

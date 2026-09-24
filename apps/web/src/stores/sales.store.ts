@@ -69,8 +69,8 @@ export const useSalesStore = create<SalesState>((set) => ({
   loadSales: async (params) => {
     set({ loading: true, error: null });
     try {
-      const data = (await api.getSales(params)) as Sale[];
-      set({ sales: data, loading: false });
+      const response = (await api.getSales(params)) as { data: Sale[]; pagination: any };
+      set({ sales: response.data, loading: false });
     } catch (error) {
       set({ error: 'Error al cargar ventas', loading: false });
       throw error;

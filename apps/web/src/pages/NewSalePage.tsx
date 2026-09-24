@@ -2,21 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import SaleDocumentForm from '../components/SaleDocumentForm';
+import { CartItem } from '../../../packages/shared/types';
 
 export default function NewSalePage() {
   const navigate = useNavigate();
-  const [cart, setCart] = useState<any[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   useEffect(() => {
-    // Cargar carrito desde localStorage
     try {
       const stored = localStorage.getItem('pos-cart');
-      if (stored) {
-        setCart(JSON.parse(stored));
-      }
-    } catch {
-      setCart([]);
-    }
+      if (stored) setCart(JSON.parse(stored));
+    } catch { setCart([]); }
   }, []);
 
   const handleSave = async (data: any) => {
@@ -39,11 +35,5 @@ export default function NewSalePage() {
     }
   };
 
-  return (
-    <SaleDocumentForm
-      tipo="NOTA_VENTA"
-      initialCart={cart}
-      onSave={handleSave}
-    />
-  );
+  return <SaleDocumentForm tipo="NOTA_VENTA" initialCart={cart} onSave={handleSave} />;
 }

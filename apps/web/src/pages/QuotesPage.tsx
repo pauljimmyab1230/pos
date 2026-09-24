@@ -5,6 +5,7 @@ import { useProductsStore } from '../stores/products.store';
 import { useClientsStore } from '../stores/clients.store';
 import { useToastStore } from '../stores/toast.store';
 import { ListSkeleton, GridSkeleton } from '../components/Skeleton';
+import { Product, Client, CartItem } from '../../../packages/shared/types';
 import {
   Plus,
   Search,
@@ -27,63 +28,6 @@ import {
   Barcode,
   ArrowLeft,
 } from 'lucide-react';
-
-interface Quote {
-  id: string;
-  serie: string;
-  correlativo: number;
-  fechaEmision: string;
-  estado: string;
-  total: number;
-  metodoPago?: string;
-  pagos?: Array<{ metodo: string; monto: number }>;
-  cliente?: {
-    id?: string;
-    nombres?: string;
-    apellidos?: string;
-    razonSocial?: string;
-    numeroDoc?: string;
-    direccion?: string;
-  };
-  items?: Array<{
-    id: string;
-    productId: string;
-    cantidad: number;
-    precioUnit: number;
-    product?: any;
-  }>;
-  observacion?: string;
-  direccionEnvio?: string;
-  origenCompra?: string;
-}
-
-interface Product {
-  id: string;
-  tipo: string;
-  nombre: string;
-  precioConIGV: number;
-  precioSinIGV?: number;
-  stock: number;
-  codigo?: string;
-  barcode?: string;
-  categoriaSunat?: string;
-}
-
-interface Client {
-  id: string;
-  tipoDoc: string;
-  numeroDoc: string;
-  nombres?: string;
-  apellidos?: string;
-  razonSocial?: string;
-  direccion?: string;
-}
-
-interface CartItem {
-  product: Product;
-  cantidad: number;
-  precioUnit: number;
-}
 
 export default function QuotesPage() {
   const {
@@ -254,7 +198,11 @@ export default function QuotesPage() {
       precioConIGV: parseFloat(tempProduct.precioConIGV),
       precioSinIGV: parseFloat(tempProduct.precioSinIGV) || parseFloat(tempProduct.precioConIGV) / 1.18,
       stock: 999,
+      stockMinimo: 0,
+      unidadMedida: 'NIU',
       categoriaSunat: tempProduct.categoriaSunat,
+      catalogoVirtual: false,
+      activo: true,
     };
 
     setCart([...cart, { product: newProduct, cantidad: 1, precioUnit: newProduct.precioConIGV }]);
@@ -449,15 +397,15 @@ export default function QuotesPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Pendiente':
-        return 'bg-yellow-50 text-yellow-700';
+        return 'bg-yellow-50 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400';
       case 'Aprobada':
-        return 'bg-green-50 text-green-700';
+        return 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400';
       case 'Rechazada':
-        return 'bg-red-50 text-red-700';
+        return 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400';
       case 'Convertida':
-        return 'bg-blue-50 text-blue-700';
+        return 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400';
       default:
-        return 'bg-gray-50 text-gray-700';
+        return 'bg-gray-50 text-gray-700 dark:bg-gray-500/10 dark:text-gray-400';
     }
   };
 
@@ -477,11 +425,16 @@ export default function QuotesPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Cotizaciones</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Cotizaciones</h1>
+          <span className="px-2.5 py-0.5 bg-primary-500/10 text-primary-500 dark:text-primary-400 text-xs font-medium rounded-full">
+            {filteredQuotes.length}
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
-            className="p-2 text-primary-500 hover:bg-primary-50 rounded-lg"
+            className="p-2 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg"
           >
             {viewMode === 'list' ? <Grid className="w-5 h-5" /> : <List className="w-5 h-5" />}
           </button>
@@ -491,7 +444,7 @@ export default function QuotesPage() {
               setShowForm(true);
               loadFormData();
             }}
-            className="flex items-center gap-2 bg-primary-500 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-primary-600"
+            className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 py-2.5 rounded-lg font-medium hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25 transition-all"
           >
             <Plus className="w-5 h-5" /> Nueva
           </button>
@@ -500,7 +453,7 @@ export default function QuotesPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
         <input
           type="text"
           value={search}
@@ -508,7 +461,7 @@ export default function QuotesPage() {
             setSearch(e.target.value);
             setCurrentPage(1);
           }}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+          className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
           placeholder="Buscar por serie, cliente..."
         />
       </div>
@@ -519,20 +472,25 @@ export default function QuotesPage() {
       ) : viewMode === 'list' ? (
         <div className="space-y-3">
           {paginatedQuotes.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No hay cotizaciones</div>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">No hay cotizaciones</p>
+            </div>
           ) : (
             paginatedQuotes.map((quote) => (
               <div
                 key={quote.id}
-                className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-sm transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-primary-50 rounded-xl flex items-center justify-center">
-                    <FileText className="w-7 h-7 text-primary-500" />
+                  <div className="w-14 h-14 bg-primary-50 dark:bg-primary-500/10 rounded-xl flex items-center justify-center">
+                    <FileText className="w-7 h-7 text-primary-500 dark:text-primary-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
                         {quote.serie}-{quote.correlativo}
                       </h3>
                       <span
@@ -543,32 +501,32 @@ export default function QuotesPage() {
                         {quote.estado}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 truncate">{getClientName(quote)}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{getClientName(quote)}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
                       {new Date(quote.fechaEmision).toLocaleDateString('es-PE')}
                     </p>
                   </div>
-                  <p className="text-lg font-bold text-primary-500">
+                  <p className="text-lg font-bold text-primary-500 dark:text-primary-400">
                     S/ {Number(quote.total).toFixed(2)}
                   </p>
                   <div className="flex flex-col gap-1">
                     <button
                       onClick={() => handleEdit(quote)}
-                      className="p-1.5 text-gray-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg"
+                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     {quote.estado === 'Pendiente' && (
                       <button
                         onClick={() => handleConvert(quote.id)}
-                        className="p-1.5 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg"
+                        className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10 rounded-lg"
                       >
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     )}
                     <button
                       onClick={() => handleDelete(quote.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -581,12 +539,17 @@ export default function QuotesPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
           {paginatedQuotes.length === 0 ? (
-            <div className="col-span-2 text-center py-8 text-gray-500">No hay cotizaciones</div>
+            <div className="col-span-2 text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">No hay cotizaciones</p>
+            </div>
           ) : (
             paginatedQuotes.map((quote) => (
               <div
                 key={quote.id}
-                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-sm"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-sm transition-colors"
               >
                 <div className="bg-gradient-to-br from-primary-400 to-primary-600 p-4">
                   <span className="px-2 py-1 bg-white/20 text-white text-xs rounded-full">
@@ -598,33 +561,33 @@ export default function QuotesPage() {
                   </div>
                 </div>
                 <div className="p-3">
-                  <h3 className="font-semibold text-gray-900 text-sm text-center">
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-sm text-center">
                     {quote.serie}-{quote.correlativo}
                   </h3>
-                  <p className="text-xs text-gray-500 text-center truncate">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center truncate">
                     {getClientName(quote)}
                   </p>
-                  <p className="text-primary-500 font-bold text-center mt-2">
+                  <p className="text-primary-500 dark:text-primary-400 font-bold text-center mt-2">
                     S/ {Number(quote.total).toFixed(2)}
                   </p>
-                  <div className="flex justify-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex justify-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                     <button
                       onClick={() => handleEdit(quote)}
-                      className="p-2 text-gray-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     {quote.estado === 'Pendiente' && (
                       <button
                         onClick={() => handleConvert(quote.id)}
-                        className="p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg"
+                        className="p-2 text-gray-400 dark:text-gray-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-500/10 rounded-lg"
                       >
                         <ArrowRight className="w-4 h-4" />
                       </button>
                     )}
                     <button
                       onClick={() => handleDelete(quote.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -639,7 +602,7 @@ export default function QuotesPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Mostrando {(currentPage - 1) * itemsPerPage + 1}-
             {Math.min(currentPage * itemsPerPage, filteredQuotes.length)} de {filteredQuotes.length}
           </p>
@@ -647,7 +610,7 @@ export default function QuotesPage() {
             <button
               onClick={() => setCurrentPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="p-2 border rounded-lg disabled:opacity-50"
+              className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -656,7 +619,9 @@ export default function QuotesPage() {
                 key={page}
                 onClick={() => setCurrentPage(page)}
                 className={`w-8 h-8 rounded-lg text-sm font-medium ${
-                  currentPage === page ? 'bg-primary-500 text-white' : 'border hover:bg-gray-50'
+                  currentPage === page
+                    ? 'bg-primary-500 text-white'
+                    : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
                 }`}
               >
                 {page}
@@ -665,7 +630,7 @@ export default function QuotesPage() {
             <button
               onClick={() => setCurrentPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="p-2 border rounded-lg disabled:opacity-50"
+              className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -680,17 +645,17 @@ export default function QuotesPage() {
           setShowForm(true);
           loadFormData();
         }}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-primary-500 text-white rounded-full shadow-lg hover:bg-primary-600 flex items-center justify-center z-40"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg hover:from-primary-600 hover:to-primary-700 shadow-primary-500/25 flex items-center justify-center z-40 transition-all"
       >
         <Plus className="w-6 h-6" />
       </button>
 
       {/* MODAL NUEVA COTIZACIÓN */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
-              <h2 className="text-lg font-semibold">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between z-10">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {editingQuote ? 'Editar Cotización' : 'Nueva Cotización'}
               </h2>
               <button
@@ -698,7 +663,7 @@ export default function QuotesPage() {
                   setShowForm(false);
                   setEditingQuote(null);
                 }}
-                className="p-2 text-gray-400 hover:text-gray-600"
+                className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <XCircle className="w-5 h-5" />
               </button>
@@ -707,33 +672,33 @@ export default function QuotesPage() {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <p className="text-gray-500">Serie</p>
-                  <p className="font-medium">CT01</p>
+                  <p className="text-gray-500 dark:text-gray-400">Serie</p>
+                  <p className="font-medium text-gray-900 dark:text-white">CT01</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Fecha</p>
-                  <p className="font-medium">{new Date().toLocaleDateString('es-PE')}</p>
+                  <p className="text-gray-500 dark:text-gray-400">Fecha</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{new Date().toLocaleDateString('es-PE')}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Moneda</p>
-                  <p className="font-medium">PE (Soles)</p>
+                  <p className="text-gray-500 dark:text-gray-400">Moneda</p>
+                  <p className="font-medium text-gray-900 dark:text-white">PE (Soles)</p>
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
                       <span className="text-lg">👤</span>
                     </div>
-                    <h3 className="font-medium">Datos del cliente</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white">Datos del cliente</h3>
                   </div>
                   <button
                     onClick={async () => {
                       await loadFormData();
                       setShowClientModal(true);
                     }}
-                    className="w-10 h-10 bg-primary-500 text-white rounded-full flex items-center justify-center hover:bg-primary-600"
+                    className="w-10 h-10 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full flex items-center justify-center hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -742,7 +707,7 @@ export default function QuotesPage() {
                   <select
                     value={form.tipoDoc}
                     onChange={(e) => setForm({ ...form, tipoDoc: e.target.value })}
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="DNI">DNI</option>
                     <option value="RUC">RUC</option>
@@ -753,7 +718,7 @@ export default function QuotesPage() {
                     type="text"
                     value={form.numeroDoc}
                     onChange={(e) => setForm({ ...form, numeroDoc: e.target.value })}
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="N° documento"
                   />
                 </div>
@@ -761,24 +726,24 @@ export default function QuotesPage() {
                   type="text"
                   value={form.clienteNombre}
                   onChange={(e) => setForm({ ...form, clienteNombre: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none mb-3"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none mb-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Nombres y apellidos / Razón social"
                 />
                 <input
                   type="text"
                   value={form.clienteDireccion}
                   onChange={(e) => setForm({ ...form, clienteDireccion: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Dirección"
                 />
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-                    <ShoppingCart className="w-5 h-5 text-primary-500" />
+                  <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+                    <ShoppingCart className="w-5 h-5 text-primary-500 dark:text-primary-400" />
                   </div>
-                  <h3 className="font-medium">Productos y Servicios</h3>
+                  <h3 className="font-medium text-gray-900 dark:text-white">Productos y Servicios</h3>
                 </div>
                 <div className="space-y-2 mb-4">
                   <button
@@ -786,7 +751,7 @@ export default function QuotesPage() {
                       await loadFormData();
                       setShowProductScreen(true);
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600"
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-medium hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25 transition-all"
                   >
                     <ScanLine className="w-5 h-5" /> Escanear con pistola lectora
                   </button>
@@ -795,7 +760,7 @@ export default function QuotesPage() {
                       await loadFormData();
                       setShowProductScreen(true);
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 rounded-xl font-medium hover:bg-primary-50"
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 dark:text-primary-400 rounded-xl font-medium hover:bg-primary-50 dark:hover:bg-primary-500/10"
                   >
                     <Camera className="w-5 h-5" /> Escanear con cámara
                   </button>
@@ -804,29 +769,34 @@ export default function QuotesPage() {
                       await loadFormData();
                       setShowProductScreen(true);
                     }}
-                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 rounded-xl font-medium hover:bg-primary-50"
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-primary-500 text-primary-500 dark:text-primary-400 rounded-xl font-medium hover:bg-primary-50 dark:hover:bg-primary-500/10"
                   >
                     <Package className="w-5 h-5" /> Agregar manualmente
                   </button>
                   <button
                     onClick={() => setShowTempProductModal(true)}
-                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-orange-400 text-orange-500 rounded-xl font-medium hover:bg-orange-50"
+                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-orange-400 text-orange-500 dark:text-orange-400 rounded-xl font-medium hover:bg-orange-50 dark:hover:bg-orange-500/10"
                   >
                     <span className="text-orange-500">⚠️</span> Añadir producto temporal
                   </button>
                 </div>
                 {cart.length === 0 ? (
-                  <p className="text-center text-gray-400 py-4">No hay productos agregados</p>
+                  <div className="text-center py-6">
+                    <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <ShoppingCart className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <p className="text-gray-400 dark:text-gray-500 text-sm">No hay productos agregados</p>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {cart.map((item) => (
                       <div
                         key={item.product.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-xl"
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm uppercase">{item.product.nombre}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="font-medium text-sm uppercase text-gray-900 dark:text-white">{item.product.nombre}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             {item.cantidad} x {Number(item.precioUnit).toFixed(2)} ={' '}
                             {(Number(item.precioUnit) * item.cantidad).toFixed(2)}
                           </p>
@@ -834,14 +804,14 @@ export default function QuotesPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => updateQuantity(item.product.id, item.cantidad - 1)}
-                            className="w-8 h-8 bg-primary-500 text-white rounded-lg flex items-center justify-center hover:bg-primary-600 font-bold"
+                            className="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg flex items-center justify-center hover:from-primary-600 hover:to-primary-700 font-bold"
                           >
                             -
                           </button>
-                          <span className="w-10 text-center font-medium">{item.cantidad}</span>
+                          <span className="w-10 text-center font-medium text-gray-900 dark:text-white">{item.cantidad}</span>
                           <button
                             onClick={() => updateQuantity(item.product.id, item.cantidad + 1)}
-                            className="w-8 h-8 bg-primary-500 text-white rounded-lg flex items-center justify-center hover:bg-primary-600 font-bold"
+                            className="w-8 h-8 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg flex items-center justify-center hover:from-primary-600 hover:to-primary-700 font-bold"
                           >
                             +
                           </button>
@@ -852,22 +822,22 @@ export default function QuotesPage() {
                 )}
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-primary-500" />
+                  <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-lg flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-primary-500 dark:text-primary-400" />
                   </div>
-                  <h3 className="font-medium">Condición de pago</h3>
+                  <h3 className="font-medium text-gray-900 dark:text-white">Condición de pago</h3>
                 </div>
 
                 {!form.pagoMultiple ? (
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm text-gray-500 mb-1">Método de pago</label>
+                      <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Método de pago</label>
                       <select
                         value={form.metodoPago}
                         onChange={(e) => setForm({ ...form, metodoPago: e.target.value })}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                        className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       >
                         <option value="Efectivo">Efectivo</option>
                         <option value="Transferencia">Transferencia</option>
@@ -881,7 +851,7 @@ export default function QuotesPage() {
                         setForm({ ...form, pagoMultiple: true });
                         setPayments([{ metodo: form.metodoPago, monto: total }]);
                       }}
-                      className="flex items-center gap-2 text-primary-500 font-medium hover:text-primary-600"
+                      className="flex items-center gap-2 text-primary-500 dark:text-primary-400 font-medium hover:text-primary-600 dark:hover:text-primary-300"
                     >
                       <Plus className="w-4 h-4" /> Pago Múltiple
                     </button>
@@ -897,7 +867,7 @@ export default function QuotesPage() {
                             newPayments[index].metodo = e.target.value;
                             setPayments(newPayments);
                           }}
-                          className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                          className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
                           <option value="Efectivo">Efectivo</option>
                           <option value="Transferencia">Transferencia</option>
@@ -914,13 +884,13 @@ export default function QuotesPage() {
                             newPayments[index].monto = parseFloat(e.target.value) || 0;
                             setPayments(newPayments);
                           }}
-                          className="w-28 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-right"
+                          className="w-28 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-right bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           placeholder="Monto"
                         />
                         {payments.length > 1 && (
                           <button
                             onClick={() => setPayments(payments.filter((_, i) => i !== index))}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -928,15 +898,15 @@ export default function QuotesPage() {
                       </div>
                     ))}
 
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                      <span className="text-sm text-gray-500">Total pagos:</span>
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Total pagos:</span>
                       <span
                         className={`font-medium ${
                           Math.abs(
                             payments.reduce((sum, p) => sum + p.monto, 0) - total
                           ) < 0.01
-                            ? 'text-green-500'
-                            : 'text-orange-500'
+                            ? 'text-green-500 dark:text-green-400'
+                            : 'text-orange-500 dark:text-orange-400'
                         }`}
                       >
                         S/ {payments.reduce((sum, p) => sum + p.monto, 0).toFixed(2)}
@@ -955,7 +925,7 @@ export default function QuotesPage() {
                             newPayments[newPayments.length - 1].monto = Math.max(0, restante);
                             setPayments(newPayments);
                           }}
-                          className="w-full py-2 text-sm text-primary-500 border border-primary-200 rounded-lg hover:bg-primary-50"
+                          className="w-full py-2 text-sm text-primary-500 dark:text-primary-400 border border-primary-200 dark:border-primary-500/30 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-500/10"
                         >
                           Completar con S/{' '}
                           {(
@@ -968,7 +938,7 @@ export default function QuotesPage() {
                       onClick={() =>
                         setPayments([...payments, { metodo: 'Efectivo', monto: 0 }])
                       }
-                      className="flex items-center gap-2 text-primary-500 font-medium hover:text-primary-600"
+                      className="flex items-center gap-2 text-primary-500 dark:text-primary-400 font-medium hover:text-primary-600 dark:hover:text-primary-300"
                     >
                       <Plus className="w-4 h-4" /> Pago Múltiple
                     </button>
@@ -976,12 +946,12 @@ export default function QuotesPage() {
                 )}
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <h3 className="font-medium mb-3">Información adicional</h3>
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+                <h3 className="font-medium mb-3 text-gray-900 dark:text-white">Información adicional</h3>
                 <textarea
                   value={form.observacion}
                   onChange={(e) => setForm({ ...form, observacion: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none mb-3"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none mb-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   rows={2}
                   placeholder="Observación"
                 />
@@ -989,26 +959,26 @@ export default function QuotesPage() {
                   type="text"
                   value={form.direccionEnvio}
                   onChange={(e) => setForm({ ...form, direccionEnvio: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Dirección de envío"
                 />
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Sub Total</span>
-                    <span className="text-gray-900">S/ {subtotal.toFixed(2)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Sub Total</span>
+                    <span className="text-gray-900 dark:text-white">S/ {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">IGV (18.00%)</span>
-                    <span className="text-gray-900">S/ {igv.toFixed(2)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">IGV (18.00%)</span>
+                    <span className="text-gray-900 dark:text-white">S/ {igv.toFixed(2)}</span>
                   </div>
 
-                  <div className="flex items-center justify-between py-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-2">
-                      <span className="text-primary-500">🏷️</span>
-                      <span className="text-sm text-gray-600">Descuento global</span>
+                      <span className="text-primary-500 dark:text-primary-400">🏷️</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Descuento global</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -1019,7 +989,7 @@ export default function QuotesPage() {
                         }
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
                     </label>
                   </div>
 
@@ -1034,34 +1004,34 @@ export default function QuotesPage() {
                             porcentajeDescuento: parseFloat(e.target.value) || 0,
                           })
                         }
-                        className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                        className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         placeholder="%"
                         min="0"
                         max="100"
                       />
-                      <span className="text-sm text-gray-500">% descuento</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">% descuento</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200">
-                    <span className="text-gray-900">Total</span>
-                    <span className="text-primary-500">S/ {total.toFixed(2)}</span>
+                  <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <span className="text-gray-900 dark:text-white">Total</span>
+                    <span className="text-primary-500 dark:text-primary-400">S/ {total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex gap-3">
+            <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex gap-3">
               <button
                 onClick={() => setShowForm(false)}
-                className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
+                className="flex-1 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting || cart.length === 0}
-                className="flex-1 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 disabled:opacity-50"
+                className="flex-1 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-medium hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25 disabled:opacity-50 transition-all"
               >
                 {submitting ? 'Generando...' : 'Generar'}
               </button>
@@ -1072,55 +1042,55 @@ export default function QuotesPage() {
 
       {/* PANTALLA COMPLETA SELECCIONAR PRODUCTOS */}
       {showProductScreen && (
-        <div className="fixed inset-0 bg-white z-[100] flex flex-col">
-          <div className="flex items-center gap-4 p-4 border-b border-gray-200">
+        <div className="fixed inset-0 bg-white dark:bg-gray-900 z-[100] flex flex-col">
+          <div className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={() => {
                 setShowProductScreen(false);
                 setSelectedProducts([]);
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-900 dark:text-white"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-semibold flex-1">Agregar Producto</h1>
+            <h1 className="text-xl font-semibold flex-1 text-gray-900 dark:text-white">Agregar Producto</h1>
             <button
               onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
-              className="p-2 text-primary-500 hover:bg-primary-50 rounded-lg"
+              className="p-2 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg"
             >
               {viewMode === 'list' ? <Grid className="w-5 h-5" /> : <List className="w-5 h-5" />}
             </button>
             {selectedProducts.length > 0 && (
               <button
                 onClick={confirmProductSelection}
-                className="w-10 h-10 bg-primary-500 text-white rounded-full flex items-center justify-center hover:bg-primary-600"
+                className="w-10 h-10 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full flex items-center justify-center hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25"
               >
                 <ArrowRight className="w-5 h-5" />
               </button>
             )}
           </div>
 
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 value={searchProduct}
                 onChange={(e) => setSearchProduct(e.target.value)}
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                 placeholder="Buscar productos"
               />
-              <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400">
+              <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 dark:text-gray-500">
                 <Barcode className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           <div className="flex items-center gap-2 px-4 py-3">
-            <button className="px-5 py-2.5 rounded-xl font-medium text-sm bg-primary-500 text-white">
+            <button className="px-5 py-2.5 rounded-xl font-medium text-sm bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25">
               Productos
             </button>
-            <button className="px-5 py-2.5 rounded-xl font-medium text-sm bg-gray-100 text-gray-600">
+            <button className="px-5 py-2.5 rounded-xl font-medium text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
               Servicios
             </button>
           </div>
@@ -1129,7 +1099,12 @@ export default function QuotesPage() {
             {loadingProducts ? (
               <ListSkeleton count={5} />
             ) : filteredProducts.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No se encontraron productos</div>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Package className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                </div>
+                <p className="text-gray-500 dark:text-gray-400">No se encontraron productos</p>
+              </div>
             ) : (
               filteredProducts.map((product) => (
                 <button
@@ -1137,27 +1112,31 @@ export default function QuotesPage() {
                   onClick={() => toggleProductSelection(product.id)}
                   className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
                     selectedProducts.includes(product.id)
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
                   }`}
                 >
                   <div
                     className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                      product.tipo === 'Servicio' ? 'bg-blue-50' : 'bg-primary-50'
+                      product.tipo === 'Servicio'
+                        ? 'bg-blue-50 dark:bg-blue-500/10'
+                        : 'bg-primary-50 dark:bg-primary-500/10'
                     }`}
                   >
                     {product.tipo === 'Servicio' ? (
-                      <Wrench className="w-7 h-7 text-blue-500" />
+                      <Wrench className="w-7 h-7 text-blue-500 dark:text-blue-400" />
                     ) : (
-                      <Package className="w-7 h-7 text-primary-500" />
+                      <Package className="w-7 h-7 text-primary-500 dark:text-primary-400" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <h3 className="font-semibold text-gray-900 uppercase">{product.nombre}</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white uppercase">{product.nombre}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span
                         className={`text-sm ${
-                          product.stock > 0 ? 'text-gray-500' : 'text-red-500'
+                          product.stock > 0
+                            ? 'text-gray-500 dark:text-gray-400'
+                            : 'text-red-500 dark:text-red-400'
                         }`}
                       >
                         {product.stock > 0 ? `Stock: ${product.stock}` : 'Sin stock'}
@@ -1165,10 +1144,10 @@ export default function QuotesPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-primary-500">
+                    <p className="text-lg font-bold text-primary-500 dark:text-primary-400">
                       S/ {Number(product.precioConIGV).toFixed(2)}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {product.categoriaSunat || 'Gravada'}
                     </p>
                   </div>
@@ -1184,10 +1163,10 @@ export default function QuotesPage() {
 
           <button
             onClick={confirmProductSelection}
-            className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
+            className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all ${
               selectedProducts.length > 0
-                ? 'bg-primary-500 text-white hover:bg-primary-600'
-                : 'bg-gray-300 text-gray-500'
+                ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 shadow-primary-500/25'
+                : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
             }`}
           >
             <ArrowRight className="w-6 h-6" />
@@ -1197,24 +1176,24 @@ export default function QuotesPage() {
 
       {/* Modal Producto Temporal */}
       {showTempProductModal && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md">
-            <div className="p-4 border-b flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-orange-500 text-xl">⚠️</span>
-                <h3 className="font-semibold">Añadir Producto Temporal</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Añadir Producto Temporal</h3>
               </div>
               <button
                 onClick={() => setShowTempProductModal(false)}
-                className="p-2 text-gray-400 hover:text-gray-600"
+                className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-4">
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
-                <p className="text-sm text-orange-700 flex items-center gap-2">
+              <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 rounded-lg p-3 mb-4">
+                <p className="text-sm text-orange-700 dark:text-orange-400 flex items-center gap-2">
                   <span className="text-orange-500">ℹ</span>
                   Este producto no se guardará en su sistema, solo se utilizará temporalmente en
                   esta venta.
@@ -1223,11 +1202,11 @@ export default function QuotesPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">Producto o Servicio</label>
+                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Producto o Servicio</label>
                   <select
                     value={tempProduct.tipo}
                     onChange={(e) => setTempProduct({ ...tempProduct, tipo: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="Producto">Producto</option>
                     <option value="Servicio">Servicio</option>
@@ -1235,24 +1214,24 @@ export default function QuotesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">Nombre</label>
+                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Nombre</label>
                   <input
                     type="text"
                     value={tempProduct.nombre}
                     onChange={(e) => setTempProduct({ ...tempProduct, nombre: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                     placeholder="Nombre del producto"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-500 mb-1">Categoría SUNAT</label>
+                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Categoría SUNAT</label>
                   <select
                     value={tempProduct.categoriaSunat}
                     onChange={(e) =>
                       setTempProduct({ ...tempProduct, categoriaSunat: e.target.value })
                     }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="Gravada">Gravada</option>
                     <option value="Exonerada">Exonerada</option>
@@ -1262,18 +1241,18 @@ export default function QuotesPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-500 mb-1">Precio con IGV</label>
+                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Precio con IGV</label>
                     <input
                       type="number"
                       step="0.01"
                       value={tempProduct.precioConIGV}
                       onChange={(e) => calcularPrecioTempSinIGV(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                      className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                       placeholder="0.00"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-500 mb-1">Precio sin IGV</label>
+                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Precio sin IGV</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1281,7 +1260,7 @@ export default function QuotesPage() {
                       onChange={(e) =>
                         setTempProduct({ ...tempProduct, precioSinIGV: e.target.value })
                       }
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                      className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                       placeholder="0.00"
                     />
                   </div>
@@ -1289,7 +1268,7 @@ export default function QuotesPage() {
 
                 <button
                   onClick={addTempProduct}
-                  className="w-full py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors"
+                  className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-500/25 transition-all"
                 >
                   Agregar Producto
                 </button>
@@ -1301,25 +1280,25 @@ export default function QuotesPage() {
 
       {/* Modal Clientes */}
       {showClientModal && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold">Seleccionar cliente</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Seleccionar cliente</h3>
                 <button
                   onClick={() => setShowClientModal(false)}
-                  className="p-2 text-gray-400 hover:text-gray-600"
+                  className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <XCircle className="w-5 h-5" />
                 </button>
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
                   value={searchClient}
                   onChange={(e) => setSearchClient(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Buscar..."
                 />
               </div>
@@ -1329,19 +1308,19 @@ export default function QuotesPage() {
                 <button
                   key={client.id}
                   onClick={() => selectClient(client)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left"
                 >
-                  <div className="w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center">
-                    <span className="text-primary-500 font-semibold text-sm">
+                  <div className="w-10 h-10 bg-primary-50 dark:bg-primary-500/10 rounded-full flex items-center justify-center">
+                    <span className="text-primary-500 dark:text-primary-400 font-semibold text-sm">
                       {client.nombres?.charAt(0) || client.razonSocial?.charAt(0) || 'C'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
+                    <p className="font-medium text-gray-900 dark:text-white truncate">
                       {client.razonSocial ||
                         `${client.nombres || ''} ${client.apellidos || ''}`.trim()}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {client.tipoDoc}: {client.numeroDoc}
                     </p>
                   </div>
